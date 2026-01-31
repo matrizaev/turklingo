@@ -1,0 +1,5 @@
+{
+  "name": "TurkLingo Analyzer",
+  "description": "A sophisticated front-end application utilizing AI to provide deep morphological and grammatical analysis of Turkish words and sentences.",
+  "requestFramePermissions": []
+}
