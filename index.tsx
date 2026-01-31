@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { DEFAULT_OPTIONS, EXAMPLE_INPUTS, POS_COLORS } from "./constants";
+import { DEFAULT_OPTIONS, EXAMPLE_INPUTS, POS_COLORS, UI_STRINGS } from "./constants";
 import { AnalysisOptions, AnalysisResult, HistoryItem } from "./types";
 import { analyzeText } from "./services/geminiService";
 
 // --- Components ---
 
-const Header = () => (
+const Header = ({ uiLang, setUiLang, t }: { uiLang: 'en' | 'ru', setUiLang: (l: 'en' | 'ru') => void, t: any }) => (
   <header className="bg-white border-b border-turk-200 sticky top-0 z-50">
     <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -14,17 +14,33 @@ const Header = () => (
           Tr
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight">TurkLingo</h1>
-          <p className="text-xs text-slate-500 font-medium">AI Grammar & Morphology Analyzer</p>
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">{t.appTitle}</h1>
+          <p className="text-xs text-slate-500 font-medium">{t.tagline}</p>
         </div>
       </div>
-      <a 
-        href="#" 
-        className="text-sm text-turk-600 hover:text-turk-800 font-medium transition-colors"
-        onClick={(e) => { e.preventDefault(); alert("TurkLingo v1.0\nPowered by Google Gemini"); }}
-      >
-        About
-      </a>
+      <div className="flex items-center gap-4">
+        <div className="flex bg-slate-100 rounded-lg p-1">
+          <button 
+            onClick={() => setUiLang('en')}
+            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${uiLang === 'en' ? 'bg-white text-turk-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            EN
+          </button>
+          <button 
+            onClick={() => setUiLang('ru')}
+            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${uiLang === 'ru' ? 'bg-white text-turk-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            RU
+          </button>
+        </div>
+        <a 
+          href="#" 
+          className="text-sm text-turk-600 hover:text-turk-800 font-medium transition-colors hidden sm:block"
+          onClick={(e) => { e.preventDefault(); alert(t.aboutMessage); }}
+        >
+          {t.about}
+        </a>
+      </div>
     </div>
   </header>
 );
@@ -41,16 +57,16 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
+const ErrorDisplay = ({ error, onRetry, t }: { error: string; onRetry: () => void; t: any }) => (
   <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
     <div className="text-red-500 text-4xl mb-3">⚠️</div>
-    <h3 className="text-lg font-semibold text-red-800 mb-2">Analysis Failed</h3>
+    <h3 className="text-lg font-semibold text-red-800 mb-2">{t.analysisFailed}</h3>
     <p className="text-red-600 mb-4">{error}</p>
     <button
       onClick={onRetry}
       className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 font-medium transition-colors"
     >
-      Try Again
+      {t.tryAgain}
     </button>
   </div>
 );
@@ -65,7 +81,7 @@ const Chip: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick
   </button>
 );
 
-const OptionsPanel = ({ options, setOptions, isOpen }: { options: AnalysisOptions; setOptions: (o: AnalysisOptions) => void; isOpen: boolean }) => {
+const OptionsPanel = ({ options, setOptions, isOpen, t }: { options: AnalysisOptions; setOptions: (o: AnalysisOptions) => void; isOpen: boolean; t: any }) => {
   if (!isOpen) return null;
 
   const toggle = (key: keyof AnalysisOptions) => {
@@ -76,19 +92,19 @@ const OptionsPanel = ({ options, setOptions, isOpen }: { options: AnalysisOption
     <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm animate-fadeIn">
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={options.beginnerFriendly} onChange={() => toggle('beginnerFriendly')} className="accent-accent-600 w-4 h-4" />
-        <span className="text-slate-700">Beginner-friendly explanations</span>
+        <span className="text-slate-700">{t.beginnerFriendly}</span>
       </label>
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={options.showVowelHarmony} onChange={() => toggle('showVowelHarmony')} className="accent-accent-600 w-4 h-4" />
-        <span className="text-slate-700">Show vowel harmony rules</span>
+        <span className="text-slate-700">{t.showVowelHarmony}</span>
       </label>
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={options.showIPA} onChange={() => toggle('showIPA')} className="accent-accent-600 w-4 h-4" />
-        <span className="text-slate-700">Show IPA pronunciation</span>
+        <span className="text-slate-700">{t.showIPA}</span>
       </label>
       
       <div className="flex items-center gap-2">
-        <span className="text-slate-700">Detail Level:</span>
+        <span className="text-slate-700">{t.detailLevel}:</span>
         <select 
           value={options.detailLevel} 
           onChange={(e) => setOptions({...options, detailLevel: e.target.value as any})}
@@ -99,34 +115,50 @@ const OptionsPanel = ({ options, setOptions, isOpen }: { options: AnalysisOption
           <option>Deep</option>
         </select>
       </div>
+
+       <div className="flex items-center gap-2">
+        <span className="text-slate-700">{t.outputLanguage}:</span>
+        <select 
+          value={options.outputLanguage} 
+          onChange={(e) => setOptions({...options, outputLanguage: e.target.value as any})}
+          className="ml-auto bg-white border border-slate-300 rounded px-2 py-1 text-xs"
+        >
+          <option value="English">English</option>
+          <option value="Turkish">Turkish</option>
+          <option value="Russian">Russian</option>
+        </select>
+      </div>
     </div>
   );
 };
 
 // --- Result Sub-Components ---
 
-const OverviewTab = ({ result }: { result: AnalysisResult }) => (
+const OverviewTab = ({ result, t, options }: { result: AnalysisResult, t: any, options: AnalysisOptions }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-        <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Detected Language</h4>
+        <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{t.detectedLanguage}</h4>
         <p className="text-lg font-semibold text-indigo-900 capitalize">
-          {result.detected.language === 'tr' ? 'Turkish 🇹🇷' : 'Unknown'} 
+          {result.detected.language === 'tr' ? 'Turkish 🇹🇷' : t.unknown} 
           <span className="text-sm font-normal text-indigo-600 ml-2 opacity-75">
-            ({result.detected.isSentence ? 'Sentence' : 'Single Word'})
+            ({result.detected.isSentence ? t.sentence : t.singleWord})
           </span>
         </p>
       </div>
       <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-        <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Meaning ({DEFAULT_OPTIONS.outputLanguage})</h4>
-        <p className="text-lg text-emerald-900">{result.overview.meaningEnglish || "—"}</p>
+        <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">{t.meaning} ({options.outputLanguage})</h4>
+        {/* Prioritize meaningTarget if available and output language isn't English, otherwise fall back to meaningEnglish */}
+        <p className="text-lg text-emerald-900">
+            {result.overview.meaningTarget || result.overview.meaningEnglish || "—"}
+        </p>
       </div>
     </div>
 
     {result.overview.sentenceNotes && result.overview.sentenceNotes.length > 0 && (
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-          <span>📝</span> Key Grammatical Notes
+          <span>📝</span> {t.keyNotes}
         </h3>
         <ul className="space-y-2">
           {result.overview.sentenceNotes.map((note, idx) => (
@@ -142,7 +174,7 @@ const OverviewTab = ({ result }: { result: AnalysisResult }) => (
     {result.commonMistakes && result.commonMistakes.length > 0 && (
       <div className="bg-amber-50 p-5 rounded-xl border border-amber-200">
         <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
-          <span>⚠️</span> Common Mistakes
+          <span>⚠️</span> {t.commonMistakes}
         </h3>
         <ul className="space-y-2">
           {result.commonMistakes.map((mistake, idx) => (
@@ -157,7 +189,7 @@ const OverviewTab = ({ result }: { result: AnalysisResult }) => (
   </div>
 );
 
-const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0] }> = ({ token }) => {
+const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ token, t }) => {
   const posClass = POS_COLORS[token.pos] || POS_COLORS['X'];
   
   return (
@@ -183,7 +215,7 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0] }> = ({ token }) 
       <div className="p-4 space-y-4">
         {/* Morphology Chain */}
         <div>
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Morphology Chain</h4>
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.morphologyChain}</h4>
           <div className="flex flex-wrap items-center gap-1 text-sm font-mono text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
             {token.morphology.fullChain || token.surface}
           </div>
@@ -192,7 +224,7 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0] }> = ({ token }) 
         {/* Inflections */}
         {token.morphology.inflection && token.morphology.inflection.length > 0 && (
           <div>
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Inflection</h4>
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.inflection}</h4>
             <div className="space-y-2">
               {token.morphology.inflection.map((inf, idx) => (
                 <div key={idx} className="flex items-start gap-3 text-sm">
@@ -217,7 +249,7 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0] }> = ({ token }) 
         {/* Derivations */}
         {token.morphology.derivation && token.morphology.derivation.length > 0 && (
           <div>
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Derivation</h4>
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.derivation}</h4>
             <div className="space-y-2">
               {token.morphology.derivation.map((der, idx) => (
                 <div key={idx} className="flex items-start gap-3 text-sm">
@@ -236,15 +268,15 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0] }> = ({ token }) 
   );
 };
 
-const TokensTab = ({ result }: { result: AnalysisResult }) => (
+const TokensTab = ({ result, t }: { result: AnalysisResult, t: any }) => (
   <div className="space-y-4">
     {result.tokens.map((token, idx) => (
-      <TokenCard key={idx} token={token} />
+      <TokenCard key={idx} token={token} t={t} />
     ))}
   </div>
 );
 
-const SuffixBreakdownTab = ({ result }: { result: AnalysisResult }) => (
+const SuffixBreakdownTab = ({ result, t }: { result: AnalysisResult, t: any }) => (
   <div className="space-y-8">
     {result.tokens.map((token, idx) => (
       <div key={idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -258,7 +290,7 @@ const SuffixBreakdownTab = ({ result }: { result: AnalysisResult }) => (
              <div className="bg-slate-800 text-white px-3 py-2 rounded-lg font-mono font-bold shadow-sm">
                {token.morphology.root}
              </div>
-             <span className="text-[10px] text-slate-500 font-bold mt-1 uppercase">Root</span>
+             <span className="text-[10px] text-slate-500 font-bold mt-1 uppercase">{t.root}</span>
           </div>
 
           {/* Derivations */}
@@ -299,7 +331,7 @@ const SuffixBreakdownTab = ({ result }: { result: AnalysisResult }) => (
         {/* Vowel Harmony */}
         {token.morphology.vowelHarmony && token.morphology.vowelHarmony.length > 0 && (
           <div className="mt-4 bg-slate-50 rounded-lg p-3 text-sm border border-slate-100">
-            <h5 className="font-semibold text-slate-700 mb-2 text-xs uppercase tracking-wider">Harmony Rules Applied</h5>
+            <h5 className="font-semibold text-slate-700 mb-2 text-xs uppercase tracking-wider">{t.harmonyRules}</h5>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {token.morphology.vowelHarmony.map((h, i) => (
                 <li key={i} className="flex gap-2 items-start">
@@ -318,7 +350,7 @@ const SuffixBreakdownTab = ({ result }: { result: AnalysisResult }) => (
   </div>
 );
 
-const ResultDisplay = ({ result }: { result: AnalysisResult }) => {
+const ResultDisplay = ({ result, t, options }: { result: AnalysisResult, t: any, options: AnalysisOptions }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'tokens' | 'suffix'>('overview');
 
   const copyJSON = () => {
@@ -331,9 +363,9 @@ const ResultDisplay = ({ result }: { result: AnalysisResult }) => {
       {/* Tabs */}
       <div className="flex border-b border-slate-200 overflow-x-auto scrollbar-thin">
         {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'tokens', label: 'Token Analysis' },
-          { id: 'suffix', label: 'Suffix Breakdown' },
+          { id: 'overview', label: t.tabs.overview },
+          { id: 'tokens', label: t.tabs.tokens },
+          { id: 'suffix', label: t.tabs.suffix },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -352,14 +384,14 @@ const ResultDisplay = ({ result }: { result: AnalysisResult }) => {
            onClick={copyJSON}
            className="px-4 py-4 text-xs font-semibold text-slate-400 hover:text-slate-600 border-l border-slate-100 transition-colors uppercase tracking-wider"
         >
-          JSON
+          {t.copyJson}
         </button>
       </div>
 
       <div className="p-6 bg-slate-50/50 min-h-[400px]">
-        {activeTab === 'overview' && <OverviewTab result={result} />}
-        {activeTab === 'tokens' && <TokensTab result={result} />}
-        {activeTab === 'suffix' && <SuffixBreakdownTab result={result} />}
+        {activeTab === 'overview' && <OverviewTab result={result} t={t} options={options} />}
+        {activeTab === 'tokens' && <TokensTab result={result} t={t} />}
+        {activeTab === 'suffix' && <SuffixBreakdownTab result={result} t={t} />}
       </div>
     </div>
   );
@@ -367,12 +399,12 @@ const ResultDisplay = ({ result }: { result: AnalysisResult }) => {
 
 // --- History Component ---
 
-const HistoryPanel = ({ history, onSelect }: { history: HistoryItem[], onSelect: (item: HistoryItem) => void }) => {
+const HistoryPanel = ({ history, onSelect, t }: { history: HistoryItem[], onSelect: (item: HistoryItem) => void, t: any }) => {
   if (history.length === 0) return null;
 
   return (
     <div className="mt-12 mb-8">
-      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Recent Analyses</h3>
+      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">{t.history}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {history.map((item) => (
           <button
@@ -382,7 +414,7 @@ const HistoryPanel = ({ history, onSelect }: { history: HistoryItem[], onSelect:
           >
             <div className="font-medium text-slate-800 truncate group-hover:text-turk-700">{item.input}</div>
             <div className="text-xs text-slate-400 mt-1 flex justify-between">
-              <span>{item.result.detected.isSentence ? 'Sentence' : 'Word'}</span>
+              <span>{item.result.detected.isSentence ? t.sentence : t.singleWord}</span>
               <span>{new Date(item.timestamp).toLocaleDateString()}</span>
             </div>
           </button>
@@ -402,6 +434,18 @@ const App = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [uiLang, setUiLang] = useState<'en' | 'ru'>('en');
+
+  const t = UI_STRINGS[uiLang];
+
+  // Sync AI output language with UI language, unless manually changed? 
+  // For simplicity, switching UI language updates the default output language preference
+  useEffect(() => {
+    setOptions(prev => ({
+      ...prev,
+      outputLanguage: uiLang === 'ru' ? 'Russian' : 'English'
+    }));
+  }, [uiLang]);
 
   // Load history from localStorage
   useEffect(() => {
@@ -453,14 +497,14 @@ const App = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
-      <Header />
+      <Header uiLang={uiLang} setUiLang={setUiLang} t={t} />
 
       <main className="flex-grow w-full max-w-5xl mx-auto px-4 py-8">
         
         {/* Input Section */}
         <section className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-slate-100">
           <label htmlFor="input" className="block text-sm font-semibold text-slate-700 mb-2">
-            Enter Turkish word or sentence
+            {t.inputLabel}
           </label>
           
           <div className="relative">
@@ -468,14 +512,14 @@ const App = () => {
               id="input"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="e.g., Evlerimizden..."
+              placeholder={t.inputPlaceholder}
               className="w-full h-32 p-4 text-lg bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-turk-400 focus:ring-0 transition-colors resize-none placeholder-slate-300"
             />
             {inputText && (
               <button 
                 onClick={() => setInputText('')}
                 className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
-                title="Clear"
+                title={t.clear}
               >
                 ✕
               </button>
@@ -494,33 +538,33 @@ const App = () => {
                 onClick={() => setShowOptions(!showOptions)}
                 className="text-slate-500 hover:text-slate-700 font-medium text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                {showOptions ? 'Hide Options' : 'Options'}
+                {showOptions ? t.hideOptions : t.options}
               </button>
               <button
                 onClick={handleAnalyze}
                 disabled={isLoading || !inputText.trim()}
                 className="flex-grow md:flex-grow-0 bg-accent-600 hover:bg-accent-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg shadow-accent-600/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
               >
-                {isLoading ? 'Analyzing...' : 'Analyze'}
+                {isLoading ? t.analyzing : t.analyze}
               </button>
             </div>
           </div>
 
-          <OptionsPanel options={options} setOptions={setOptions} isOpen={showOptions} />
+          <OptionsPanel options={options} setOptions={setOptions} isOpen={showOptions} t={t} />
         </section>
 
         {/* Results Section */}
-        {error && <ErrorDisplay error={error} onRetry={handleAnalyze} />}
+        {error && <ErrorDisplay error={error} onRetry={handleAnalyze} t={t} />}
         
         {isLoading && <LoadingSkeleton />}
         
-        {!isLoading && result && <ResultDisplay result={result} />}
+        {!isLoading && result && <ResultDisplay result={result} t={t} options={options} />}
 
-        <HistoryPanel history={history} onSelect={restoreHistoryItem} />
+        <HistoryPanel history={history} onSelect={restoreHistoryItem} t={t} />
       </main>
       
       <footer className="bg-slate-50 border-t border-slate-200 py-8 text-center text-slate-400 text-sm">
-        <p>© {new Date().getFullYear()} TurkLingo Analyzer. Built with React, Tailwind & Gemini.</p>
+        <p>{t.footer.replace('{year}', new Date().getFullYear().toString())}</p>
       </footer>
     </div>
   );

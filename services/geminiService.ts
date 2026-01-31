@@ -22,6 +22,7 @@ const analysisSchema: Schema = {
       properties: {
         meaningEnglish: { type: Type.STRING },
         meaningTurkish: { type: Type.STRING },
+        meaningTarget: { type: Type.STRING, description: "Meaning in the requested output language (if not English/Turkish)" },
         register: { type: Type.STRING, enum: ["formal", "neutral", "informal", "unknown"] },
         sentenceNotes: { type: Type.ARRAY, items: { type: Type.STRING } },
       },
@@ -120,8 +121,12 @@ export async function analyzeText(text: string, options: AnalysisOptions): Promi
   Configuration:
   - Beginner Friendly Explanations: ${options.beginnerFriendly}
   - Show Vowel Harmony logic: ${options.showVowelHarmony}
-  - Target Output Language for meanings: ${options.outputLanguage}
+  - Target Output Language for meanings, explanations, glosses, and notes: ${options.outputLanguage}
   - Detail Level: ${options.detailLevel}
+
+  Important:
+  - All explanations, token glosses, sentence notes, morphology descriptions, and common mistakes MUST be in ${options.outputLanguage}.
+  - If ${options.outputLanguage} is NOT English, use the 'meaningTarget' field for the main translation instead of 'meaningEnglish', or populate both if appropriate.
 
   Strictly follow the JSON schema. 
   If the input is not Turkish or invalid, indicate this in 'detected.language' as 'unknown' but try to parse if it looks like Turkish.

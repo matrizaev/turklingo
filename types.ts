@@ -2,7 +2,7 @@ export type AnalysisOptions = {
   beginnerFriendly: boolean;
   showVowelHarmony: boolean;
   showIPA: boolean;
-  outputLanguage: 'English' | 'Turkish';
+  outputLanguage: 'English' | 'Turkish' | 'Russian';
   detailLevel: 'Brief' | 'Normal' | 'Deep';
 };
 
@@ -15,6 +15,7 @@ export type AnalysisResult = {
   overview: {
     meaningEnglish?: string;
     meaningTurkish?: string;
+    meaningTarget?: string; // For the requested output language if different
     register?: "formal" | "neutral" | "informal" | "unknown";
     sentenceNotes?: string[];
   };
