@@ -71,7 +71,6 @@ const ErrorDisplay = ({ error, onRetry, t }: { error: string; onRetry: () => voi
   </div>
 );
 
-// Explicitly type as React.FC to allow 'key' prop in lists if needed, though mostly used directly
 const Chip: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => (
   <button
     onClick={onClick}
@@ -132,8 +131,6 @@ const OptionsPanel = ({ options, setOptions, isOpen, t }: { options: AnalysisOpt
   );
 };
 
-// --- Result Sub-Components ---
-
 const OverviewTab = ({ result, t, options }: { result: AnalysisResult, t: any, options: AnalysisOptions }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -148,7 +145,6 @@ const OverviewTab = ({ result, t, options }: { result: AnalysisResult, t: any, o
       </div>
       <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
         <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">{t.meaning} ({options.outputLanguage})</h4>
-        {/* Prioritize meaningTarget if available and output language isn't English, otherwise fall back to meaningEnglish */}
         <p className="text-lg text-emerald-900">
             {result.overview.meaningTarget || result.overview.meaningEnglish || "—"}
         </p>
@@ -213,7 +209,6 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Morphology Chain */}
         <div>
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.morphologyChain}</h4>
           <div className="flex flex-wrap items-center gap-1 text-sm font-mono text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
@@ -221,7 +216,6 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
           </div>
         </div>
 
-        {/* Inflections */}
         {token.morphology.inflection && token.morphology.inflection.length > 0 && (
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.inflection}</h4>
@@ -235,7 +229,7 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
                     {inf.features && Object.keys(inf.features).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                             {Object.entries(inf.features).map(([k, v]) => (
-                                <span key={k} className="text-[10px] bg-slate-100 text-slate-500 px-1 rounded border border-slate-200">{k}: {v}</span>
+                                v && <span key={k} className="text-[10px] bg-slate-100 text-slate-500 px-1 rounded border border-slate-200">{k}: {v}</span>
                             ))}
                         </div>
                     )}
@@ -246,7 +240,6 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
           </div>
         )}
         
-        {/* Derivations */}
         {token.morphology.derivation && token.morphology.derivation.length > 0 && (
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.derivation}</h4>
@@ -276,79 +269,86 @@ const TokensTab = ({ result, t }: { result: AnalysisResult, t: any }) => (
   </div>
 );
 
-const SuffixBreakdownTab = ({ result, t }: { result: AnalysisResult, t: any }) => (
-  <div className="space-y-8">
-    {result.tokens.map((token, idx) => (
-      <div key={idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">
-          {token.surface}
-        </h3>
-        
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          {/* Root */}
-          <div className="flex flex-col items-center">
-             <div className="bg-slate-800 text-white px-3 py-2 rounded-lg font-mono font-bold shadow-sm">
-               {token.morphology.root}
-             </div>
-             <span className="text-[10px] text-slate-500 font-bold mt-1 uppercase">{t.root}</span>
+const SuffixBreakdownTab = ({ result, t, options }: { result: AnalysisResult, t: any, options: AnalysisOptions }) => {
+  const [showVowelHarmony, setShowVowelHarmony] = useState(!options.beginnerFriendly);
+
+  return (
+    <div className="space-y-8">
+      {result.tokens.map((token, idx) => (
+        <div key={idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">
+            {token.surface}
+          </h3>
+          
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <div className="flex flex-col items-center">
+               <div className="bg-slate-800 text-white px-3 py-2 rounded-lg font-mono font-bold shadow-sm">
+                 {token.morphology.root}
+               </div>
+               <span className="text-[10px] text-slate-500 font-bold mt-1 uppercase">{t.root}</span>
+            </div>
+
+            {token.morphology.derivation?.map((d, i) => (
+              <React.Fragment key={`d-${i}`}>
+                <span className="text-slate-300 font-bold text-lg">+</span>
+                <div className="flex flex-col items-center group relative cursor-help">
+                  <div className="bg-indigo-100 text-indigo-900 px-3 py-2 rounded-lg font-mono font-semibold border border-indigo-200">
+                    {d.affix}
+                  </div>
+                  <span className="text-[10px] text-indigo-500 font-bold mt-1 uppercase max-w-[60px] truncate text-center">{d.type}</span>
+                  <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-xs p-2 rounded w-48 z-10 text-center shadow-xl">
+                    {d.explanation}
+                  </div>
+                </div>
+              </React.Fragment>
+            ))}
+
+            {token.morphology.inflection?.map((inf, i) => (
+              <React.Fragment key={`i-${i}`}>
+                <span className="text-slate-300 font-bold text-lg">+</span>
+                <div className="flex flex-col items-center group relative cursor-help">
+                  <div className="bg-accent-50 text-accent-700 px-3 py-2 rounded-lg font-mono font-semibold border border-accent-100">
+                    {inf.affix}
+                  </div>
+                  <span className="text-[10px] text-accent-500 font-bold mt-1 uppercase max-w-[60px] truncate text-center">{inf.category}</span>
+                  <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-xs p-2 rounded w-48 z-10 text-center shadow-xl">
+                    {inf.explanation}
+                  </div>
+                </div>
+              </React.Fragment>
+            ))}
           </div>
 
-          {/* Derivations */}
-          {token.morphology.derivation?.map((d, i) => (
-            <React.Fragment key={`d-${i}`}>
-              <span className="text-slate-300 font-bold text-lg">+</span>
-              <div className="flex flex-col items-center group relative cursor-help">
-                <div className="bg-indigo-100 text-indigo-900 px-3 py-2 rounded-lg font-mono font-semibold border border-indigo-200">
-                  {d.affix}
+          {token.morphology.vowelHarmony && token.morphology.vowelHarmony.length > 0 && (
+            <div className="mt-4">
+              <button 
+                onClick={() => setShowVowelHarmony(!showVowelHarmony)}
+                className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 hover:text-slate-600 flex items-center gap-1"
+              >
+                {t.harmonyRules} {showVowelHarmony ? '↑' : '↓'}
+              </button>
+              {showVowelHarmony && (
+                <div className="bg-slate-50 rounded-lg p-3 text-sm border border-slate-100 animate-fadeIn">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {token.morphology.vowelHarmony.map((h, i) => (
+                      <li key={i} className="flex gap-2 items-start">
+                         <div className="mt-1 w-1.5 h-1.5 rounded-full bg-turk-500 shrink-0"></div>
+                         <div>
+                           <span className="font-medium text-slate-800 block text-xs">{h.rule.replace(/-/g, ' ')}</span>
+                           <span className="text-slate-500 text-xs">{h.explanation}</span>
+                         </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <span className="text-[10px] text-indigo-500 font-bold mt-1 uppercase max-w-[60px] truncate text-center">{d.type}</span>
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-xs p-2 rounded w-48 z-10 text-center">
-                  {d.explanation}
-                </div>
-              </div>
-            </React.Fragment>
-          ))}
-
-          {/* Inflections */}
-          {token.morphology.inflection?.map((inf, i) => (
-            <React.Fragment key={`i-${i}`}>
-              <span className="text-slate-300 font-bold text-lg">+</span>
-              <div className="flex flex-col items-center group relative cursor-help">
-                <div className="bg-accent-50 text-accent-700 px-3 py-2 rounded-lg font-mono font-semibold border border-accent-100">
-                  {inf.affix}
-                </div>
-                <span className="text-[10px] text-accent-500 font-bold mt-1 uppercase max-w-[60px] truncate text-center">{inf.category}</span>
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-xs p-2 rounded w-48 z-10 text-center">
-                  {inf.explanation}
-                </div>
-              </div>
-            </React.Fragment>
-          ))}
+              )}
+            </div>
+          )}
         </div>
-
-        {/* Vowel Harmony */}
-        {token.morphology.vowelHarmony && token.morphology.vowelHarmony.length > 0 && (
-          <div className="mt-4 bg-slate-50 rounded-lg p-3 text-sm border border-slate-100">
-            <h5 className="font-semibold text-slate-700 mb-2 text-xs uppercase tracking-wider">{t.harmonyRules}</h5>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {token.morphology.vowelHarmony.map((h, i) => (
-                <li key={i} className="flex gap-2 items-start">
-                   <div className="mt-1 w-1.5 h-1.5 rounded-full bg-turk-500 shrink-0"></div>
-                   <div>
-                     <span className="font-medium text-slate-800 block text-xs">{h.rule.replace(/-/g, ' ')}</span>
-                     <span className="text-slate-500 text-xs">{h.explanation}</span>
-                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 const ResultDisplay = ({ result, t, options }: { result: AnalysisResult, t: any, options: AnalysisOptions }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'tokens' | 'suffix'>('overview');
@@ -360,7 +360,6 @@ const ResultDisplay = ({ result, t, options }: { result: AnalysisResult, t: any,
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-slideUp">
-      {/* Tabs */}
       <div className="flex border-b border-slate-200 overflow-x-auto scrollbar-thin">
         {[
           { id: 'overview', label: t.tabs.overview },
@@ -391,13 +390,11 @@ const ResultDisplay = ({ result, t, options }: { result: AnalysisResult, t: any,
       <div className="p-6 bg-slate-50/50 min-h-[400px]">
         {activeTab === 'overview' && <OverviewTab result={result} t={t} options={options} />}
         {activeTab === 'tokens' && <TokensTab result={result} t={t} />}
-        {activeTab === 'suffix' && <SuffixBreakdownTab result={result} t={t} />}
+        {activeTab === 'suffix' && <SuffixBreakdownTab result={result} t={t} options={options} />}
       </div>
     </div>
   );
 };
-
-// --- History Component ---
 
 const HistoryPanel = ({ history, onSelect, t }: { history: HistoryItem[], onSelect: (item: HistoryItem) => void, t: any }) => {
   if (history.length === 0) return null;
@@ -424,8 +421,6 @@ const HistoryPanel = ({ history, onSelect, t }: { history: HistoryItem[], onSele
   );
 };
 
-// --- Main App ---
-
 const App = () => {
   const [inputText, setInputText] = useState("");
   const [options, setOptions] = useState<AnalysisOptions>(DEFAULT_OPTIONS);
@@ -438,8 +433,6 @@ const App = () => {
 
   const t = UI_STRINGS[uiLang];
 
-  // Sync AI output language with UI language, unless manually changed? 
-  // For simplicity, switching UI language updates the default output language preference
   useEffect(() => {
     setOptions(prev => ({
       ...prev,
@@ -447,7 +440,6 @@ const App = () => {
     }));
   }, [uiLang]);
 
-  // Load history from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('turklingo_history');
     if (saved) {
@@ -500,13 +492,10 @@ const App = () => {
       <Header uiLang={uiLang} setUiLang={setUiLang} t={t} />
 
       <main className="flex-grow w-full max-w-5xl mx-auto px-4 py-8">
-        
-        {/* Input Section */}
         <section className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-slate-100">
           <label htmlFor="input" className="block text-sm font-semibold text-slate-700 mb-2">
             {t.inputLabel}
           </label>
-          
           <div className="relative">
             <textarea
               id="input"
@@ -516,50 +505,30 @@ const App = () => {
               className="w-full h-32 p-4 text-lg bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-turk-400 focus:ring-0 transition-colors resize-none placeholder-slate-300"
             />
             {inputText && (
-              <button 
-                onClick={() => setInputText('')}
-                className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
-                title={t.clear}
-              >
-                ✕
-              </button>
+              <button onClick={() => setInputText('')} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600" title={t.clear}>✕</button>
             )}
           </div>
-
           <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <div className="flex flex-wrap gap-2">
               {EXAMPLE_INPUTS.slice(0, 3).map((ex) => (
                 <Chip key={ex} label={ex} onClick={() => setInputText(ex)} />
               ))}
             </div>
-            
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <button
-                onClick={() => setShowOptions(!showOptions)}
-                className="text-slate-500 hover:text-slate-700 font-medium text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-              >
+              <button onClick={() => setShowOptions(!showOptions)} className="text-slate-500 hover:text-slate-700 font-medium text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors">
                 {showOptions ? t.hideOptions : t.options}
               </button>
-              <button
-                onClick={handleAnalyze}
-                disabled={isLoading || !inputText.trim()}
-                className="flex-grow md:flex-grow-0 bg-accent-600 hover:bg-accent-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg shadow-accent-600/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-              >
+              <button onClick={handleAnalyze} disabled={isLoading || !inputText.trim()} className="flex-grow md:flex-grow-0 bg-accent-600 hover:bg-accent-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg shadow-accent-600/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
                 {isLoading ? t.analyzing : t.analyze}
               </button>
             </div>
           </div>
-
           <OptionsPanel options={options} setOptions={setOptions} isOpen={showOptions} t={t} />
         </section>
 
-        {/* Results Section */}
         {error && <ErrorDisplay error={error} onRetry={handleAnalyze} t={t} />}
-        
         {isLoading && <LoadingSkeleton />}
-        
         {!isLoading && result && <ResultDisplay result={result} t={t} options={options} />}
-
         <HistoryPanel history={history} onSelect={restoreHistoryItem} t={t} />
       </main>
       

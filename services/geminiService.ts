@@ -3,8 +3,6 @@ import { AnalysisOptions, AnalysisResult } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Define the exact schema to ensure Type safety from the model
-// Note: Type.OBJECT must not be empty. We define common Turkish grammatical features explicitly.
 const analysisSchema: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -22,7 +20,7 @@ const analysisSchema: Schema = {
       properties: {
         meaningEnglish: { type: Type.STRING },
         meaningTurkish: { type: Type.STRING },
-        meaningTarget: { type: Type.STRING, description: "Meaning in the requested output language (if not English/Turkish)" },
+        meaningTarget: { type: Type.STRING, description: "Didactic meaning (pedagogical paraphrase) in the requested language." },
         register: { type: Type.STRING, enum: ["formal", "neutral", "informal", "unknown"] },
         sentenceNotes: { type: Type.ARRAY, items: { type: Type.STRING } },
       },
@@ -65,17 +63,17 @@ const analysisSchema: Schema = {
                     features: { 
                       type: Type.OBJECT, 
                       properties: {
-                        person: { type: Type.STRING, description: "e.g., 1, 2, 3" },
-                        number: { type: Type.STRING, description: "e.g., singular, plural" },
-                        case: { type: Type.STRING, description: "e.g., nom, acc, dat, loc, abl, gen" },
-                        possessive: { type: Type.STRING, description: "e.g., 1s, 2p" },
-                        tense: { type: Type.STRING, description: "e.g., past, present, future, aorist" },
-                        aspect: { type: Type.STRING, description: "e.g., progressive, perfective" },
-                        mood: { type: Type.STRING, description: "e.g., indicative, imperative, optative, conditional" },
-                        voice: { type: Type.STRING, description: "e.g., active, passive, causative, reflexive, reciprocal" },
-                        polarity: { type: Type.STRING, description: "e.g., positive, negative" }
-                      }, 
-                      description: "Grammatical features for this specific inflection." 
+                        person: { type: Type.STRING },
+                        number: { type: Type.STRING },
+                        case: { type: Type.STRING },
+                        possessive: { type: Type.STRING },
+                        tense: { type: Type.STRING },
+                        aspect: { type: Type.STRING },
+                        mood: { type: Type.STRING },
+                        voice: { type: Type.STRING },
+                        polarity: { type: Type.STRING },
+                        evidentiality: { type: Type.STRING }
+                      }
                     },
                     explanation: { type: Type.STRING },
                   },
@@ -112,25 +110,23 @@ const analysisSchema: Schema = {
 };
 
 export async function analyzeText(text: string, options: AnalysisOptions): Promise<AnalysisResult> {
-  // Using gemini-3-pro-preview for complex linguistic tasks to ensure high accuracy on morphology
   const modelId = "gemini-3-pro-preview"; 
 
-  const systemPrompt = `You are an expert Turkish linguistics assistant. 
-  Your task is to analyze Turkish words or sentences and provide a deep morphological breakdown.
-  
-  Configuration:
-  - Beginner Friendly Explanations: ${options.beginnerFriendly}
-  - Show Vowel Harmony logic: ${options.showVowelHarmony}
-  - Target Output Language for meanings, explanations, glosses, and notes: ${options.outputLanguage}
+  const systemPrompt = `You are an expert Turkish linguistics assistant for language learners.
+  Analyze the provided Turkish text.
+
+  Key Instructions:
+  1. Didactic Meaning: Provide a pedagogical meaning (not just a translation) in 'overview.meaningTarget'. Explain the literal sense and grammatical intent.
+  2. Language: Output ALL text in ${options.outputLanguage}.
+  3. Feature Canonicalization: Use standard keys in features (tense, person, case, mood, etc.).
+  4. Suffixes/Clitics: Treat clitics like '-ki' or the question particle 'mi' as separate tokens or clearly identified bound morphemes.
+  5. Beginner Friendly: If 'beginnerFriendly' is true, keep explanations simple and prioritize common usage over obscure terminology.
+  6. Empty Arrays: If no derivations or inflections exist, return an empty array [].
+
+  Analysis Configuration:
+  - Beginner Friendly: ${options.beginnerFriendly}
+  - Output Language: ${options.outputLanguage}
   - Detail Level: ${options.detailLevel}
-
-  Important:
-  - All explanations, token glosses, sentence notes, morphology descriptions, and common mistakes MUST be in ${options.outputLanguage}.
-  - If ${options.outputLanguage} is NOT English, use the 'meaningTarget' field for the main translation instead of 'meaningEnglish', or populate both if appropriate.
-
-  Strictly follow the JSON schema. 
-  If the input is not Turkish or invalid, indicate this in 'detected.language' as 'unknown' but try to parse if it looks like Turkish.
-  For the 'fullChain', represent the segmentation like "root + suffix + suffix".
   `;
 
   const response = await ai.models.generateContent({
@@ -140,19 +136,15 @@ export async function analyzeText(text: string, options: AnalysisOptions): Promi
       systemInstruction: systemPrompt,
       responseMimeType: "application/json",
       responseSchema: analysisSchema,
-      temperature: 0.1, // Low temperature for consistent linguistic analysis
+      temperature: 0.1,
     },
   });
 
-  if (!response.text) {
-    throw new Error("Empty response from AI service.");
-  }
+  if (!response.text) throw new Error("Empty response from AI service.");
 
   try {
-    const data = JSON.parse(response.text);
-    return data as AnalysisResult;
+    return JSON.parse(response.text) as AnalysisResult;
   } catch (e) {
-    console.error("Failed to parse Gemini response", response.text);
     throw new Error("Invalid JSON response from AI model.");
   }
 }
