@@ -189,6 +189,13 @@ const OverviewTab = ({ result, t, options }: { result: AnalysisResult, t: any, o
 
 const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ token, t }) => {
   const posClass = POS_COLORS[token.pos] || POS_COLORS['X'];
+  const localizedPos = t.posTags?.[token.pos] || token.pos;
+
+  const tTerm = (term: any) => {
+    if (typeof term !== 'string') return String(term);
+    const normalized = term.toLowerCase().trim();
+    return t.grammaticalTerms?.[normalized] || term;
+  };
   
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all">
@@ -196,7 +203,7 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border ${posClass}`}>
-              {token.pos}
+              {localizedPos}
             </span>
             {token.morphology.pronunciationIpaApprox && (
               <span className="text-xs text-slate-400 font-mono">/{token.morphology.pronunciationIpaApprox}/</span>
@@ -221,17 +228,26 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
         {token.morphology.inflection && token.morphology.inflection.length > 0 && (
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.inflection}</h4>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {token.morphology.inflection.map((inf, idx) => (
                 <div key={idx} className="flex items-start gap-3 text-sm">
-                  <span className="font-mono text-accent-600 bg-accent-50 px-1.5 rounded">{inf.affix}</span>
-                  <div>
-                    <span className="font-medium text-slate-700 mr-2">{inf.category}:</span>
-                    <span className="text-slate-600">{inf.explanation}</span>
+                  <span className="font-mono text-accent-600 bg-accent-50 px-1.5 py-0.5 rounded border border-accent-100">{inf.affix}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-slate-700">
+                        {tTerm(inf.category)}:
+                      </span>
+                      <span className="text-slate-600">{inf.explanation}</span>
+                    </div>
                     {inf.features && Object.keys(inf.features).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap gap-1 mt-1.5">
                             {Object.entries(inf.features).map(([k, v]) => (
-                                v && <span key={k} className="text-[10px] bg-slate-100 text-slate-500 px-1 rounded border border-slate-200">{k}: {v}</span>
+                                v && (
+                                  <span key={k} className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1">
+                                    <span className="font-bold opacity-70">{tTerm(k)}:</span>
+                                    <span>{tTerm(v)}</span>
+                                  </span>
+                                )
                             ))}
                         </div>
                     )}
@@ -248,9 +264,9 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
             <div className="space-y-2">
               {token.morphology.derivation.map((der, idx) => (
                 <div key={idx} className="flex items-start gap-3 text-sm">
-                  <span className="font-mono text-indigo-600 bg-indigo-50 px-1.5 rounded">{der.affix}</span>
+                  <span className="font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{der.affix}</span>
                   <div>
-                    <span className="font-medium text-slate-700 mr-2">{der.type}:</span>
+                    <span className="font-bold text-slate-700 mr-2">{tTerm(der.type)}:</span>
                     <span className="text-slate-600">{der.explanation}</span>
                   </div>
                 </div>
