@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { DEFAULT_OPTIONS, EXAMPLE_INPUTS, POS_COLORS, UI_STRINGS } from "./constants";
+import { DEFAULT_OPTIONS, EXAMPLE_INPUTS, POS_COLORS, UI_STRINGS, SUFFIX_DATA, PHONETIC_RULES } from "./constants";
 import { AnalysisOptions, AnalysisResult, HistoryItem } from "./types";
 import { analyzeText } from "./services/geminiService";
 
@@ -58,7 +58,7 @@ const LoadingSkeleton = () => (
 );
 
 const ErrorDisplay = ({ error, onRetry, t }: { error: string; onRetry: () => void; t: any }) => (
-  <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+  <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center animate-fadeIn">
     <div className="text-red-500 text-4xl mb-3">⚠️</div>
     <h3 className="text-lg font-semibold text-red-800 mb-2">{t.analysisFailed}</h3>
     <p className="text-red-600 mb-4">{error}</p>
@@ -131,10 +131,12 @@ const OptionsPanel = ({ options, setOptions, isOpen, t }: { options: AnalysisOpt
   );
 };
 
+// --- Result Sub-Components ---
+
 const OverviewTab = ({ result, t, options }: { result: AnalysisResult, t: any, options: AnalysisOptions }) => (
-  <div className="space-y-6">
+  <div className="space-y-6 animate-fadeIn">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+      <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm">
         <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{t.detectedLanguage}</h4>
         <p className="text-lg font-semibold text-indigo-900 capitalize">
           {result.detected.language === 'tr' ? 'Turkish 🇹🇷' : t.unknown} 
@@ -143,9 +145,9 @@ const OverviewTab = ({ result, t, options }: { result: AnalysisResult, t: any, o
           </span>
         </p>
       </div>
-      <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+      <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm">
         <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">{t.meaning} ({options.outputLanguage})</h4>
-        <p className="text-lg text-emerald-900">
+        <p className="text-lg text-emerald-900 leading-snug">
             {result.overview.meaningTarget || result.overview.meaningEnglish || "—"}
         </p>
       </div>
@@ -175,7 +177,7 @@ const OverviewTab = ({ result, t, options }: { result: AnalysisResult, t: any, o
         <ul className="space-y-2">
           {result.commonMistakes.map((mistake, idx) => (
             <li key={idx} className="text-amber-900 text-sm flex gap-2">
-              <span className="text-amber-500 mt-1">!</span>
+              <span className="text-amber-500 mt-1 font-bold">!</span>
               {mistake}
             </li>
           ))}
@@ -189,7 +191,7 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
   const posClass = POS_COLORS[token.pos] || POS_COLORS['X'];
   
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all">
       <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-start">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -262,7 +264,7 @@ const TokenCard: React.FC<{ token: AnalysisResult['tokens'][0], t: any }> = ({ t
 };
 
 const TokensTab = ({ result, t }: { result: AnalysisResult, t: any }) => (
-  <div className="space-y-4">
+  <div className="space-y-4 animate-fadeIn">
     {result.tokens.map((token, idx) => (
       <TokenCard key={idx} token={token} t={t} />
     ))}
@@ -273,7 +275,7 @@ const SuffixBreakdownTab = ({ result, t, options }: { result: AnalysisResult, t:
   const [showVowelHarmony, setShowVowelHarmony] = useState(!options.beginnerFriendly);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fadeIn">
       {result.tokens.map((token, idx) => (
         <div key={idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">
@@ -323,7 +325,7 @@ const SuffixBreakdownTab = ({ result, t, options }: { result: AnalysisResult, t:
             <div className="mt-4">
               <button 
                 onClick={() => setShowVowelHarmony(!showVowelHarmony)}
-                className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 hover:text-slate-600 flex items-center gap-1"
+                className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 hover:text-slate-600 flex items-center gap-1 transition-colors"
               >
                 {t.harmonyRules} {showVowelHarmony ? '↑' : '↓'}
               </button>
@@ -346,6 +348,148 @@ const SuffixBreakdownTab = ({ result, t, options }: { result: AnalysisResult, t:
           )}
         </div>
       ))}
+    </div>
+  );
+};
+
+const ReferenceTab = ({ uiLang, t }: { uiLang: 'en' | 'ru', t: any }) => {
+  const data = SUFFIX_DATA[uiLang];
+  const rules = PHONETIC_RULES[uiLang];
+  
+  const Table = ({ title, items, columns, renderRow }: { title: string, items: any[], columns: string[], renderRow: (item: any, i: number) => React.ReactNode }) => (
+    <div className="mb-8">
+      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 px-1">{title}</h3>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+        <table className="w-full text-left text-sm border-collapse min-w-[500px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              {columns.map((col, i) => (
+                <th key={i} className="px-4 py-3 font-bold text-slate-700">{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {items.map((item, i) => renderRow(item, i))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="animate-fadeIn space-y-6 max-w-5xl mx-auto px-4 py-4">
+      {/* Vowel Harmony Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
+           <Table 
+            title={`${t.ref.vowelHarmony} (2-way / A-type)`} 
+            items={rules.vowelTwoWay}
+            columns={[t.ref.trigger, t.ref.result, t.ref.example]}
+            renderRow={(item, i) => (
+              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-4 py-3 font-bold text-accent-600">{item.trigger}</td>
+                <td className="px-4 py-3 font-mono font-bold text-slate-700">→ {item.result}</td>
+                <td className="px-4 py-3 text-slate-500 italic">{item.examples}</td>
+              </tr>
+            )}
+          />
+        </div>
+        <div>
+          <Table 
+            title={`${t.ref.vowelHarmony} (4-way / I-type)`} 
+            items={rules.vowelFourWay}
+            columns={[t.ref.trigger, t.ref.result, t.ref.example]}
+            renderRow={(item, i) => (
+              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-4 py-3 font-bold text-accent-600">{item.trigger}</td>
+                <td className="px-4 py-3 font-mono font-bold text-slate-700">→ {item.result}</td>
+                <td className="px-4 py-3 text-slate-500 italic">{item.examples}</td>
+              </tr>
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Consonant Rules Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
+          <Table 
+            title={t.ref.consonantAlteration} 
+            items={rules.consonantsSoftening}
+            columns={[t.ref.change, t.ref.meaning, t.ref.example]}
+            renderRow={(item, i) => (
+              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-4 py-3 font-bold text-emerald-600">{item.change}</td>
+                <td className="px-4 py-3 text-slate-700">{item.context}</td>
+                <td className="px-4 py-3 text-slate-500 italic font-mono">{item.example}</td>
+              </tr>
+            )}
+          />
+        </div>
+        <div>
+          <Table 
+            title={t.ref.consonantAssimilation} 
+            items={rules.consonantsAssimilation}
+            columns={[t.ref.change, t.ref.meaning, t.ref.example]}
+            renderRow={(item, i) => (
+              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-4 py-3 font-bold text-amber-600">{item.change}</td>
+                <td className="px-4 py-3 text-slate-700">{item.context}</td>
+                <td className="px-4 py-3 text-slate-500 italic font-mono">{item.example}</td>
+              </tr>
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Grammatical Suffixes Section */}
+      <div className="border-t border-slate-200 pt-8 mt-8">
+        <Table 
+          title={t.ref.nouns} 
+          items={data.nouns}
+          columns={[t.ref.suffix, t.ref.meaning, t.ref.example]}
+          renderRow={(item, i) => (
+            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+              <td className="px-4 py-3 font-mono text-accent-600 font-bold whitespace-nowrap">{item.s}</td>
+              <td className="px-4 py-3 text-slate-600">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">{t.ref[item.cat]}</span>
+                {item.m}
+              </td>
+              <td className="px-4 py-3 text-slate-500 italic">{item.e}</td>
+            </tr>
+          )}
+        />
+        <Table 
+          title={t.ref.verbs} 
+          items={data.verbs}
+          columns={[t.ref.suffix, t.ref.meaning, t.ref.example]}
+          renderRow={(item, i) => (
+            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+              <td className="px-4 py-3 font-mono text-accent-600 font-bold whitespace-nowrap">{item.s}</td>
+              <td className="px-4 py-3 text-slate-600">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">{t.ref[item.cat]}</span>
+                {item.m}
+              </td>
+              <td className="px-4 py-3 text-slate-500 italic">{item.e}</td>
+            </tr>
+          )}
+        />
+        <Table 
+          title={t.ref.derivations} 
+          items={data.derivations}
+          columns={[t.ref.suffix, t.ref.meaning, t.ref.example]}
+          renderRow={(item, i) => (
+            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+              <td className="px-4 py-3 font-mono text-accent-600 font-bold whitespace-nowrap">{item.s}</td>
+              <td className="px-4 py-3 text-slate-600">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">{t.ref[item.cat]}</span>
+                {item.m}
+              </td>
+              <td className="px-4 py-3 text-slate-500 italic">{item.e}</td>
+            </tr>
+          )}
+        />
+      </div>
     </div>
   );
 };
@@ -407,7 +551,7 @@ const HistoryPanel = ({ history, onSelect, t }: { history: HistoryItem[], onSele
           <button
             key={item.id}
             onClick={() => onSelect(item)}
-            className="text-left bg-white p-3 rounded-lg border border-slate-200 hover:border-turk-300 hover:shadow-md transition-all group"
+            className="text-left bg-white p-3 rounded-lg border border-slate-200 hover:border-turk-300 hover:shadow-md transition-all group animate-slideUp"
           >
             <div className="font-medium text-slate-800 truncate group-hover:text-turk-700">{item.input}</div>
             <div className="text-xs text-slate-400 mt-1 flex justify-between">
@@ -421,6 +565,8 @@ const HistoryPanel = ({ history, onSelect, t }: { history: HistoryItem[], onSele
   );
 };
 
+// --- Main App ---
+
 const App = () => {
   const [inputText, setInputText] = useState("");
   const [options, setOptions] = useState<AnalysisOptions>(DEFAULT_OPTIONS);
@@ -430,6 +576,7 @@ const App = () => {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [uiLang, setUiLang] = useState<'en' | 'ru'>('en');
+  const [activeMainTab, setActiveMainTab] = useState<'analyzer' | 'reference'>('analyzer');
 
   const t = UI_STRINGS[uiLang];
 
@@ -484,6 +631,7 @@ const App = () => {
   const restoreHistoryItem = (item: HistoryItem) => {
     setInputText(item.input);
     setResult(item.result);
+    setActiveMainTab('analyzer');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -491,48 +639,74 @@ const App = () => {
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
       <Header uiLang={uiLang} setUiLang={setUiLang} t={t} />
 
-      <main className="flex-grow w-full max-w-5xl mx-auto px-4 py-8">
-        <section className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-slate-100">
-          <label htmlFor="input" className="block text-sm font-semibold text-slate-700 mb-2">
-            {t.inputLabel}
-          </label>
-          <div className="relative">
-            <textarea
-              id="input"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={t.inputPlaceholder}
-              className="w-full h-32 p-4 text-lg bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-turk-400 focus:ring-0 transition-colors resize-none placeholder-slate-300"
-            />
-            {inputText && (
-              <button onClick={() => setInputText('')} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600" title={t.clear}>✕</button>
-            )}
-          </div>
-          <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="flex flex-wrap gap-2">
-              {EXAMPLE_INPUTS.slice(0, 3).map((ex) => (
-                <Chip key={ex} label={ex} onClick={() => setInputText(ex)} />
-              ))}
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <button onClick={() => setShowOptions(!showOptions)} className="text-slate-500 hover:text-slate-700 font-medium text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors">
-                {showOptions ? t.hideOptions : t.options}
-              </button>
-              <button onClick={handleAnalyze} disabled={isLoading || !inputText.trim()} className="flex-grow md:flex-grow-0 bg-accent-600 hover:bg-accent-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg shadow-accent-600/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
-                {isLoading ? t.analyzing : t.analyze}
-              </button>
-            </div>
-          </div>
-          <OptionsPanel options={options} setOptions={setOptions} isOpen={showOptions} t={t} />
-        </section>
+      {/* Main Persistent Navigation */}
+      <nav className="bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 flex">
+          <button 
+            onClick={() => setActiveMainTab('analyzer')}
+            className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${activeMainTab === 'analyzer' ? 'border-accent-600 text-accent-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            {t.mainTabs.analyzer}
+          </button>
+          <button 
+            onClick={() => setActiveMainTab('reference')}
+            className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${activeMainTab === 'reference' ? 'border-accent-600 text-accent-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            {t.mainTabs.reference}
+          </button>
+        </div>
+      </nav>
 
-        {error && <ErrorDisplay error={error} onRetry={handleAnalyze} t={t} />}
-        {isLoading && <LoadingSkeleton />}
-        {!isLoading && result && <ResultDisplay result={result} t={t} options={options} />}
-        <HistoryPanel history={history} onSelect={restoreHistoryItem} t={t} />
+      <main className="flex-grow w-full max-w-5xl mx-auto px-4 py-8">
+        
+        {activeMainTab === 'analyzer' ? (
+          <div className="animate-fadeIn">
+            <section className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-slate-100">
+              <label htmlFor="input" className="block text-sm font-semibold text-slate-700 mb-2">
+                {t.inputLabel}
+              </label>
+              <div className="relative">
+                <textarea
+                  id="input"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder={t.inputPlaceholder}
+                  className="w-full h-32 p-4 text-lg bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-turk-400 focus:ring-0 transition-all resize-none placeholder-slate-300"
+                />
+                {inputText && (
+                  <button onClick={() => setInputText('')} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors" title={t.clear}>✕</button>
+                )}
+              </div>
+              <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLE_INPUTS.slice(0, 3).map((ex) => (
+                    <Chip key={ex} label={ex} onClick={() => setInputText(ex)} />
+                  ))}
+                </div>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <button onClick={() => setShowOptions(!showOptions)} className="text-slate-500 hover:text-slate-700 font-medium text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors">
+                    {showOptions ? t.hideOptions : t.options}
+                  </button>
+                  <button onClick={handleAnalyze} disabled={isLoading || !inputText.trim()} className="flex-grow md:flex-grow-0 bg-accent-600 hover:bg-accent-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg shadow-accent-600/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                    {isLoading ? t.analyzing : t.analyze}
+                  </button>
+                </div>
+              </div>
+              <OptionsPanel options={options} setOptions={setOptions} isOpen={showOptions} t={t} />
+            </section>
+
+            {error && <ErrorDisplay error={error} onRetry={handleAnalyze} t={t} />}
+            {isLoading && <LoadingSkeleton />}
+            {!isLoading && result && <ResultDisplay result={result} t={t} options={options} />}
+            <HistoryPanel history={history} onSelect={restoreHistoryItem} t={t} />
+          </div>
+        ) : (
+          <ReferenceTab uiLang={uiLang} t={t} />
+        )}
+
       </main>
       
-      <footer className="bg-slate-50 border-t border-slate-200 py-8 text-center text-slate-400 text-sm">
+      <footer className="bg-slate-50 border-t border-slate-200 py-8 text-center text-slate-400 text-sm mt-auto">
         <p>{t.footer.replace('{year}', new Date().getFullYear().toString())}</p>
       </footer>
     </div>
