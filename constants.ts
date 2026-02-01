@@ -83,6 +83,7 @@ export const UI_STRINGS = {
       vowelHarmony: "Vowel Harmony",
       consonantAlteration: "Consonant Softening (KETÇAP)",
       consonantAssimilation: "Consonant Assimilation (Fıstıkçı Şahap)",
+      bufferLetters: "Buffer Letters (YaŞaSıN)",
       suffix: "Suffix",
       meaning: "Function / Meaning",
       example: "Example",
@@ -94,7 +95,8 @@ export const UI_STRINGS = {
       possessive: "Possession",
       tenses: "Tense/Aspect",
       person: "Person",
-      derivation: "Derivation"
+      derivation: "Derivation",
+      letter: "Letter"
     },
     history: "Recent Analyses",
     copyJson: "JSON",
@@ -152,6 +154,7 @@ export const UI_STRINGS = {
       vowelHarmony: "Гармония гласных",
       consonantAlteration: "Смягчение согласных (KETÇAP)",
       consonantAssimilation: "Уподобление согласных (Fıstıkçı Şahap)",
+      bufferLetters: "Промежуточные буквы (YaŞaSıN)",
       suffix: "Суффикс",
       meaning: "Функция / Значение",
       example: "Пример",
@@ -163,7 +166,8 @@ export const UI_STRINGS = {
       possessive: "Принадлежность",
       tenses: "Время/Аспект",
       person: "Лицо",
-      derivation: "Образование"
+      derivation: "Образование",
+      letter: "Буква"
     },
     history: "История",
     copyJson: "JSON",
@@ -196,6 +200,12 @@ export const PHONETIC_RULES = {
       { change: "c → ç", context: "After voiceless (f, s, t, k, ç, ş, h, p)", example: "Aş + cı = Aşçı" },
       { change: "d → t", context: "After voiceless (f, s, t, k, ç, ş, h, p)", example: "Kitap + da = Kitapta" },
       { change: "g → k", context: "After voiceless (f, s, t, k, ç, ş, h, p)", example: "Sert + ce = Sertçe" },
+    ],
+    bufferLetters: [
+      { letter: "y", context: "General buffer between two vowels", example: "Kedi + e = Kediye" },
+      { letter: "ş", context: "Distributive numbers only", example: "İki + er = İkişer" },
+      { letter: "s", context: "3rd person possessive suffix", example: "Kedi + i = Kedisi" },
+      { letter: "n", context: "Genitive case, or between possessive and cases", example: "Kedi + in = Kedinin, Arabası + nı = Arabasını" },
     ]
   },
   ru: {
@@ -219,6 +229,12 @@ export const PHONETIC_RULES = {
       { change: "c → ç", context: "После глухих (f, s, t, k, ç, ş, h, p)", example: "Aş + cı = Aşçı" },
       { change: "d → t", context: "После глухих (f, s, t, k, ç, ş, h, p)", example: "Kitap + da = Kitapta" },
       { change: "g → k", context: "После глухих (f, s, t, k, ç, ş, h, p)", example: "Sert + ce = Sertçe" },
+    ],
+    bufferLetters: [
+      { letter: "y", context: "Общий разделитель между двумя гласными", example: "Kedi + e = Kediye" },
+      { letter: "ş", context: "Только в разделительных числительных", example: "İki + er = İkişer" },
+      { letter: "s", context: "В суффиксе принадлежности 3-го лица", example: "Kedi + i = Kedisi" },
+      { letter: "n", context: "Родительный падеж или между притяжательностью и падежом", example: "Kedi + in = Kedinin, Arabası + nı = Arabasını" },
     ]
   }
 };

@@ -442,6 +442,22 @@ const ReferenceTab = ({ uiLang, t }: { uiLang: 'en' | 'ru', t: any }) => {
         </div>
       </div>
 
+      {/* Buffer Letters Section */}
+      <div className="grid grid-cols-1 gap-8">
+        <Table 
+          title={t.ref.bufferLetters} 
+          items={rules.bufferLetters}
+          columns={[t.ref.letter, t.ref.meaning, t.ref.example]}
+          renderRow={(item, i) => (
+            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+              <td className="px-4 py-3 font-bold text-accent-600 text-xl">{item.letter}</td>
+              <td className="px-4 py-3 text-slate-700">{item.context}</td>
+              <td className="px-4 py-3 text-slate-500 italic font-mono">{item.example}</td>
+            </tr>
+          )}
+        />
+      </div>
+
       {/* Grammatical Suffixes Section */}
       <div className="border-t border-slate-200 pt-8 mt-8">
         <Table 
