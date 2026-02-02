@@ -1,15 +1,24 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import {
   DEFAULT_OPTIONS,
   EXAMPLE_INPUTS,
+  CONSTRUCTOR_ROOTS,
+  CONSTRUCTOR_SUFFIXES,
   POS_COLORS,
   UI_STRINGS,
   SUFFIX_DATA,
   PHONETIC_RULES,
 } from "./constants";
-import { AnalysisOptions, AnalysisResult, HistoryItem } from "./types";
+import {
+  AnalysisOptions,
+  AnalysisResult,
+  ConstructorPos,
+  ConstructorSuffix,
+  HistoryItem,
+} from "./types";
 import { analyzeText } from "./services/geminiService";
+import { buildConstructedWord } from "./services/wordConstructor";
 import "./index.css";
 
 // --- Components ---
@@ -109,6 +118,24 @@ const Chip: React.FC<{ label: string; onClick: () => void }> = ({
   <button
     onClick={onClick}
     className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-turk-50 text-turk-700 hover:bg-turk-100 hover:text-turk-800 transition-colors border border-turk-100 cursor-pointer"
+  >
+    {label}
+  </button>
+);
+
+const ToggleChip: React.FC<{
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}> = ({ label, selected, onClick }) => (
+  <button
+    onClick={onClick}
+    aria-pressed={selected}
+    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+      selected
+        ? "bg-accent-600 text-white border-accent-600"
+        : "bg-white text-slate-600 border-slate-200 hover:border-accent-300 hover:text-accent-700"
+    }`}
   >
     {label}
   </button>
@@ -676,6 +703,26 @@ const ReferenceTab = ({ uiLang, t }: { uiLang: "en" | "ru"; t: any }) => {
         />
       </div>
 
+      {/* Vowel Drop Section */}
+      <div className="grid grid-cols-1 gap-8">
+        <Table
+          title={t.ref.vowelDrop}
+          items={rules.vowelDrop}
+          columns={[t.ref.change, t.ref.meaning, t.ref.example]}
+          renderRow={(item, i) => (
+            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+              <td className="px-4 py-3 font-bold text-rose-600">
+                {item.change}
+              </td>
+              <td className="px-4 py-3 text-slate-700">{item.context}</td>
+              <td className="px-4 py-3 text-slate-500 italic font-mono">
+                {item.example}
+              </td>
+            </tr>
+          )}
+        />
+      </div>
+
       {/* Grammatical Suffixes Section */}
       <div className="border-t border-slate-200 pt-8 mt-8">
         <Table
@@ -735,6 +782,350 @@ const ReferenceTab = ({ uiLang, t }: { uiLang: "en" | "ru"; t: any }) => {
             </tr>
           )}
         />
+      </div>
+    </div>
+  );
+};
+
+const ConstructorTab = ({
+  uiLang,
+  t,
+  options,
+  pos,
+  onPosChange,
+  rootId,
+  onRootChange,
+  suffixIds,
+  setSuffixIds,
+  result,
+  setResult,
+  error,
+  setError,
+  loading,
+  setLoading,
+  cache,
+  setCache,
+}: {
+  uiLang: "en" | "ru";
+  t: any;
+  options: AnalysisOptions;
+  pos: ConstructorPos;
+  onPosChange: (pos: ConstructorPos) => void;
+  rootId: string;
+  onRootChange: (id: string) => void;
+  suffixIds: string[];
+  setSuffixIds: (ids: string[]) => void;
+  result: AnalysisResult | null;
+  setResult: (res: AnalysisResult | null) => void;
+  error: string | null;
+  setError: (value: string | null) => void;
+  loading: boolean;
+  setLoading: (value: boolean) => void;
+  cache: Record<string, AnalysisResult>;
+  setCache: (next: Record<string, AnalysisResult>) => void;
+}) => {
+  const roots = CONSTRUCTOR_ROOTS.filter((root) => root.pos === pos);
+  const suffixes = CONSTRUCTOR_SUFFIXES.filter((suffix) => suffix.pos === pos);
+
+  const selectedRoot = roots.find((root) => root.id === rootId) ?? roots[0];
+  const rootGloss =
+    uiLang === "ru" ? selectedRoot?.glossRu : selectedRoot?.glossEn;
+
+  const suffixIndex = useMemo(() => {
+    const indexMap: Record<string, number> = {};
+    CONSTRUCTOR_SUFFIXES.forEach((suffix, index) => {
+      indexMap[suffix.id] = index;
+    });
+    return indexMap;
+  }, []);
+
+  const selectedSuffixes = useMemo(
+    () =>
+      suffixIds
+        .map((id) => CONSTRUCTOR_SUFFIXES.find((suffix) => suffix.id === id))
+        .filter(Boolean) as ConstructorSuffix[],
+    [suffixIds],
+  );
+
+  const orderedSuffixes = useMemo(() => {
+    return [...selectedSuffixes].sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return (suffixIndex[a.id] ?? 0) - (suffixIndex[b.id] ?? 0);
+    });
+  }, [selectedSuffixes, suffixIndex]);
+
+  const { surface, chain } = useMemo(() => {
+    return buildConstructedWord(selectedRoot?.root ?? "", orderedSuffixes);
+  }, [selectedRoot?.root, orderedSuffixes]);
+
+  const categoryOrder: Record<ConstructorPos, string[]> = {
+    NOUN: ["plural", "possessive", "cases"],
+    VERB: ["tenses", "person"],
+    ADJ: ["derivation"],
+  };
+
+  const groupedSuffixes = categoryOrder[pos].map((category) => ({
+    category,
+    items: suffixes.filter((suffix) => suffix.category === category),
+  }));
+
+  const singleSelectCategories: Record<ConstructorPos, string[]> = {
+    NOUN: ["plural", "possessive", "cases"],
+    VERB: ["tenses", "person"],
+    ADJ: ["derivation"],
+  };
+
+  const suffixById = useMemo(() => {
+    const indexMap: Record<string, ConstructorSuffix> = {};
+    CONSTRUCTOR_SUFFIXES.forEach((suffix) => {
+      indexMap[suffix.id] = suffix;
+    });
+    return indexMap;
+  }, []);
+
+  const toggleSuffix = (suffixId: string) => {
+    if (suffixIds.includes(suffixId)) {
+      setSuffixIds(suffixIds.filter((id) => id !== suffixId));
+      return;
+    }
+    const nextSuffix = suffixById[suffixId];
+    if (!nextSuffix) return;
+
+    let nextIds = [...suffixIds];
+    if (singleSelectCategories[pos].includes(nextSuffix.category)) {
+      nextIds = nextIds.filter((id) => {
+        const existing = suffixById[id];
+        return existing?.category !== nextSuffix.category;
+      });
+    }
+    setSuffixIds([...nextIds, suffixId]);
+  };
+
+  const clearSelection = () => {
+    setSuffixIds([]);
+    setResult(null);
+    setError(null);
+  };
+
+  const handleAnalyze = async () => {
+    if (!surface) return;
+    const cacheKey = [
+      surface,
+      options.outputLanguage,
+      options.detailLevel,
+      options.beginnerFriendly,
+      options.showVowelHarmony,
+    ].join("::");
+    if (cache[cacheKey]) {
+      setResult(cache[cacheKey]);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await analyzeText(surface, options);
+      setResult(data);
+      setCache({ ...cache, [cacheKey]: data });
+    } catch (err: any) {
+      if (err?.message === "MISSING_API_KEY") {
+        setError(t.errors.missingApiKey);
+      } else {
+        setError(t.errors.generic);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="animate-fadeIn">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100">
+          <h2 className="text-lg font-bold text-slate-800">
+            {t.constructor.title}
+          </h2>
+          <div className="mt-4">
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              {t.constructor.posLabel}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(["NOUN", "VERB", "ADJ"] as ConstructorPos[]).map(
+                (posOption) => (
+                  <ToggleChip
+                    key={posOption}
+                    label={t.constructor.posOptions[posOption]}
+                    selected={posOption === pos}
+                    onClick={() => onPosChange(posOption)}
+                  />
+                ),
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <label
+              htmlFor="constructor-root"
+              className="block text-sm font-semibold text-slate-700 mb-2"
+            >
+              {t.constructor.rootLabel}
+            </label>
+            <select
+              id="constructor-root"
+              value={selectedRoot?.id ?? ""}
+              onChange={(e) => onRootChange(e.target.value)}
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            >
+              {roots.map((root) => (
+                <option key={root.id} value={root.id}>
+                  {root.root} — {uiLang === "ru" ? root.glossRu : root.glossEn}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-400 mt-2">
+              {t.constructor.rootHint}
+            </p>
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">
+                {t.constructor.suffixesLabel}
+              </h3>
+              <button
+                onClick={clearSelection}
+                className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {t.constructor.clear}
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">
+              {t.constructor.orderHint}
+            </p>
+            <p className="text-xs text-slate-400 mb-4">
+              {t.constructor.contractionHint}
+            </p>
+            <div className="space-y-4">
+              {groupedSuffixes.map((group) => (
+                <div key={group.category}>
+                  <p className="text-xs uppercase tracking-wider text-slate-400 font-bold mb-2">
+                    {t.constructor.categories[group.category]}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {group.items.map((suffix) => (
+                      <ToggleChip
+                        key={suffix.id}
+                        label={
+                          uiLang === "ru" ? suffix.labelRu : suffix.labelEn
+                        }
+                        selected={suffixIds.includes(suffix.id)}
+                        onClick={() => toggleSuffix(suffix.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              onClick={handleAnalyze}
+              disabled={!surface || loading}
+              className="bg-accent-600 hover:bg-accent-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors"
+            >
+              {loading ? t.analyzing : t.constructor.analyze}
+            </button>
+            <button
+              onClick={() => navigator.clipboard.writeText(surface)}
+              disabled={!surface}
+              className="bg-white border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 disabled:text-slate-300 disabled:border-slate-200 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
+            >
+              {t.constructor.copy}
+            </button>
+          </div>
+        </section>
+
+        <section className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100">
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+            {t.constructor.preview}
+          </h3>
+
+          {!surface && (
+            <p className="text-slate-400 mt-4">{t.constructor.emptyPreview}</p>
+          )}
+
+          {surface && (
+            <div className="mt-4 space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">
+                  {t.constructor.rootLabel}
+                </p>
+                <div className="text-2xl font-bold text-slate-800">
+                  {surface}
+                </div>
+                {selectedRoot && (
+                  <p className="text-sm text-slate-500 mt-1">
+                    {selectedRoot.root} · {rootGloss}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  {t.constructor.chain}
+                </p>
+                <p className="text-sm text-slate-700">{chain}</p>
+              </div>
+
+              {result && (
+                <div className="bg-white border border-slate-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    {t.constructor.appliedRules}
+                  </p>
+                  {result.tokens?.[0]?.morphology?.vowelHarmony?.length ? (
+                    <div className="space-y-3 text-xs text-slate-500">
+                      {result.tokens[0].morphology.vowelHarmony.map(
+                        (item, idx) => (
+                          <div key={`${item.rule}-${idx}`}>
+                            <p className="font-semibold text-slate-500">
+                              {item.rule}
+                            </p>
+                            <p className="mt-1">{item.explanation}</p>
+                            <p className="mt-1 text-slate-400">
+                              {item.appliesTo}
+                            </p>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">
+                      {t.emptyPlaceholder}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-6">
+            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              {t.constructor.meaning}
+            </h4>
+            {loading && <LoadingSkeleton />}
+            {error && (
+              <ErrorDisplay error={error} onRetry={handleAnalyze} t={t} />
+            )}
+            {!loading && !error && (
+              <p className="text-sm text-slate-600">
+                {result?.overview?.meaningTarget ||
+                  result?.overview?.meaningEnglish ||
+                  result?.overview?.meaningTurkish ||
+                  t.constructor.emptyMeaning}
+              </p>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -852,9 +1243,23 @@ const App = () => {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [uiLang, setUiLang] = useState<"en" | "ru">("en");
-  const [activeMainTab, setActiveMainTab] = useState<"analyzer" | "reference">(
-    "analyzer",
+  const [activeMainTab, setActiveMainTab] = useState<
+    "analyzer" | "constructor" | "reference"
+  >("analyzer");
+  const [constructorPos, setConstructorPos] = useState<ConstructorPos>("NOUN");
+  const [constructorRootId, setConstructorRootId] = useState(() => {
+    return CONSTRUCTOR_ROOTS.find((root) => root.pos === "NOUN")?.id ?? "";
+  });
+  const [constructorSuffixIds, setConstructorSuffixIds] = useState<string[]>(
+    [],
   );
+  const [constructorResult, setConstructorResult] =
+    useState<AnalysisResult | null>(null);
+  const [constructorError, setConstructorError] = useState<string | null>(null);
+  const [constructorLoading, setConstructorLoading] = useState(false);
+  const [constructorCache, setConstructorCache] = useState<
+    Record<string, AnalysisResult>
+  >({});
 
   const t = UI_STRINGS[uiLang];
 
@@ -875,6 +1280,20 @@ const App = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    setConstructorResult(null);
+    setConstructorError(null);
+  }, [
+    constructorPos,
+    constructorRootId,
+    constructorSuffixIds.join("|"),
+    options.outputLanguage,
+    options.detailLevel,
+    options.beginnerFriendly,
+    options.showVowelHarmony,
+    uiLang,
+  ]);
 
   const saveToHistory = (res: AnalysisResult) => {
     const newItem: HistoryItem = {
@@ -917,6 +1336,15 @@ const App = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleConstructorPosChange = (nextPos: ConstructorPos) => {
+    if (nextPos === constructorPos) return;
+    setConstructorPos(nextPos);
+    const nextRoot =
+      CONSTRUCTOR_ROOTS.find((root) => root.pos === nextPos)?.id ?? "";
+    setConstructorRootId(nextRoot);
+    setConstructorSuffixIds([]);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
       <Header uiLang={uiLang} setUiLang={setUiLang} t={t} />
@@ -931,6 +1359,12 @@ const App = () => {
             {t.mainTabs.analyzer}
           </button>
           <button
+            onClick={() => setActiveMainTab("constructor")}
+            className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${activeMainTab === "constructor" ? "border-accent-600 text-accent-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+          >
+            {t.mainTabs.constructor}
+          </button>
+          <button
             onClick={() => setActiveMainTab("reference")}
             className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${activeMainTab === "reference" ? "border-accent-600 text-accent-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
           >
@@ -940,7 +1374,7 @@ const App = () => {
       </nav>
 
       <main className="flex-grow w-full max-w-5xl mx-auto px-4 py-8">
-        {activeMainTab === "analyzer" ? (
+        {activeMainTab === "analyzer" && (
           <div className="animate-fadeIn">
             <section className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-slate-100">
               <label
@@ -1014,7 +1448,31 @@ const App = () => {
               t={t}
             />
           </div>
-        ) : (
+        )}
+
+        {activeMainTab === "constructor" && (
+          <ConstructorTab
+            uiLang={uiLang}
+            t={t}
+            options={options}
+            pos={constructorPos}
+            onPosChange={handleConstructorPosChange}
+            rootId={constructorRootId}
+            onRootChange={setConstructorRootId}
+            suffixIds={constructorSuffixIds}
+            setSuffixIds={setConstructorSuffixIds}
+            result={constructorResult}
+            setResult={setConstructorResult}
+            error={constructorError}
+            setError={setConstructorError}
+            loading={constructorLoading}
+            setLoading={setConstructorLoading}
+            cache={constructorCache}
+            setCache={setConstructorCache}
+          />
+        )}
+
+        {activeMainTab === "reference" && (
           <ReferenceTab uiLang={uiLang} t={t} />
         )}
       </main>

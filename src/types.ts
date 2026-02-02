@@ -6,6 +6,34 @@ export type AnalysisOptions = {
   detailLevel: "Brief" | "Normal" | "Deep";
 };
 
+export type ConstructorPos = "NOUN" | "VERB" | "ADJ";
+
+export type ConstructorRoot = {
+  id: string;
+  root: string;
+  pos: ConstructorPos;
+  glossEn: string;
+  glossRu: string;
+};
+
+export type ConstructorSuffix = {
+  id: string;
+  labelEn: string;
+  labelRu: string;
+  pattern: string;
+  category: string;
+  pos: ConstructorPos;
+  order: number;
+  buffer?: "y" | "n" | "s";
+  contract?: "dropLastVowel" | "dropSuffixVowel";
+};
+
+export type ConstructorState = {
+  pos: ConstructorPos;
+  rootId: string;
+  suffixIds: string[];
+};
+
 export type AnalysisResult = {
   input: string;
   detected: {

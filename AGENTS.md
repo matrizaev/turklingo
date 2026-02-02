@@ -35,6 +35,7 @@ Use TypeScript with React functional components. Match the existing two-space in
 
 ## Testing & Quality
 
+- After any changes, run `npm run format` and `npm run lint`.
 - Ensure the application is responsive and works across different screen sizes (mobile/desktop).
 - Verify that both English and Russian localizations remain synchronized when adding new grammar rules.
 - Maintain a performant UI by avoiding unnecessary re-renders during analysis.
