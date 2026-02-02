@@ -2,7 +2,7 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { AnalysisOptions, AnalysisResult } from "../types";
 import { apiKey } from "../env";
 
-const ai = new GoogleGenAI({ apiKey });
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const analysisSchema: Schema = {
   type: Type.OBJECT,
@@ -144,6 +144,9 @@ export async function analyzeText(
   text: string,
   options: AnalysisOptions,
 ): Promise<AnalysisResult> {
+  if (!apiKey || !ai) {
+    throw new Error("MISSING_API_KEY");
+  }
   const modelId = "gemini-3-pro-preview";
 
   const systemPrompt = `You are an expert Turkish linguistics assistant for language learners.
@@ -155,12 +158,16 @@ export async function analyzeText(
     3. Feature Canonicalization: Use standard keys in features (tense, person, case, mood, etc.).
     4. Suffixes/Clitics: Treat clitics like '-ki' or the question particle 'mi' as separate tokens or clearly identified bound morphemes.
     5. Beginner Friendly: If 'beginnerFriendly' is true, keep explanations simple and prioritize common usage over obscure terminology.
-    6. Empty Arrays: If no derivations or inflections exist, return an empty array [].
+    6. Vowel Harmony Toggle: If showVowelHarmony is false, return an empty array for vowelHarmony.
+    7. IPA Toggle: If showIPA is false, omit pronunciationIpaApprox.
+    8. Empty Arrays: If no derivations or inflections exist, return an empty array [].
 
     Analysis Configuration:
     - Beginner Friendly: ${options.beginnerFriendly}
     - Output Language: ${options.outputLanguage}
     - Detail Level: ${options.detailLevel}
+    - Show Vowel Harmony: ${options.showVowelHarmony}
+    - Show IPA: ${options.showIPA}
     `;
 
   const response = await ai.models.generateContent({

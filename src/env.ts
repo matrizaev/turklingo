@@ -6,5 +6,4 @@ declare global {
   }
 }
 
-export const apiKey =
-  window.__ENV?.API_KEY ?? process.env.API_KEY ?? "";
+export const apiKey = window.__ENV?.API_KEY ?? process.env.API_KEY ?? "";

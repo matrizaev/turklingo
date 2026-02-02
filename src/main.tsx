@@ -170,9 +170,9 @@ const OptionsPanel = ({
           }
           className="ml-auto bg-white border border-slate-300 rounded px-2 py-1 text-xs"
         >
-          <option>Brief</option>
-          <option>Normal</option>
-          <option>Deep</option>
+          <option value="Brief">{t.detailLevelOptions.Brief}</option>
+          <option value="Normal">{t.detailLevelOptions.Normal}</option>
+          <option value="Deep">{t.detailLevelOptions.Deep}</option>
         </select>
       </div>
 
@@ -185,9 +185,9 @@ const OptionsPanel = ({
           }
           className="ml-auto bg-white border border-slate-300 rounded px-2 py-1 text-xs"
         >
-          <option value="English">English</option>
-          <option value="Turkish">Turkish</option>
-          <option value="Russian">Russian</option>
+          <option value="English">{t.outputLanguageOptions.English}</option>
+          <option value="Turkish">{t.outputLanguageOptions.Turkish}</option>
+          <option value="Russian">{t.outputLanguageOptions.Russian}</option>
         </select>
       </div>
     </div>
@@ -212,7 +212,7 @@ const OverviewTab = ({
           {t.detectedLanguage}
         </h4>
         <p className="text-lg font-semibold text-indigo-900 capitalize">
-          {result.detected.language === "tr" ? "Turkish 🇹🇷" : t.unknown}
+          {result.detected.language === "tr" ? t.turkishLanguage : t.unknown}
           <span className="text-sm font-normal text-indigo-600 ml-2 opacity-75">
             ({result.detected.isSentence ? t.sentence : t.singleWord})
           </span>
@@ -225,7 +225,8 @@ const OverviewTab = ({
         <p className="text-lg text-emerald-900 leading-snug">
           {result.overview.meaningTarget ||
             result.overview.meaningEnglish ||
-            "—"}
+            result.overview.meaningTurkish ||
+            t.emptyPlaceholder}
         </p>
       </div>
     </div>
@@ -262,13 +263,30 @@ const OverviewTab = ({
         </ul>
       </div>
     )}
+
+    {result.rulesAndNotes && result.rulesAndNotes.length > 0 && (
+      <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+          <span>📌</span> {t.rulesAndNotes}
+        </h3>
+        <ul className="space-y-2">
+          {result.rulesAndNotes.map((note, idx) => (
+            <li key={idx} className="text-slate-600 text-sm flex gap-2">
+              <span className="text-accent-500 mt-1">•</span>
+              {note}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
   </div>
 );
 
-const TokenCard: React.FC<{ token: AnalysisResult["tokens"][0]; t: any }> = ({
-  token,
-  t,
-}) => {
+const TokenCard: React.FC<{
+  token: AnalysisResult["tokens"][0];
+  t: any;
+  showIPA: boolean;
+}> = ({ token, t, showIPA }) => {
   const posClass = POS_COLORS[token.pos] || POS_COLORS["X"];
   const localizedPos = t.posTags?.[token.pos] || token.pos;
 
@@ -288,7 +306,7 @@ const TokenCard: React.FC<{ token: AnalysisResult["tokens"][0]; t: any }> = ({
             >
               {localizedPos}
             </span>
-            {token.morphology.pronunciationIpaApprox && (
+            {showIPA && token.morphology.pronunciationIpaApprox && (
               <span className="text-xs text-slate-400 font-mono">
                 /{token.morphology.pronunciationIpaApprox}/
               </span>
@@ -296,7 +314,7 @@ const TokenCard: React.FC<{ token: AnalysisResult["tokens"][0]; t: any }> = ({
           </div>
           <h3 className="text-xl font-bold text-slate-800">{token.surface}</h3>
           <p className="text-sm text-slate-500 italic">
-            Lemma: {token.lemma || token.morphology.root}
+            {t.lemmaLabel}: {token.lemma || token.morphology.root}
           </p>
         </div>
         <div className="text-right">
@@ -388,10 +406,18 @@ const TokenCard: React.FC<{ token: AnalysisResult["tokens"][0]; t: any }> = ({
   );
 };
 
-const TokensTab = ({ result, t }: { result: AnalysisResult; t: any }) => (
+const TokensTab = ({
+  result,
+  t,
+  options,
+}: {
+  result: AnalysisResult;
+  t: any;
+  options: AnalysisOptions;
+}) => (
   <div className="space-y-4 animate-fadeIn">
     {result.tokens.map((token, idx) => (
-      <TokenCard key={idx} token={token} t={t} />
+      <TokenCard key={idx} token={token} t={t} showIPA={options.showIPA} />
     ))}
   </div>
 );
@@ -406,8 +432,12 @@ const SuffixBreakdownTab = ({
   options: AnalysisOptions;
 }) => {
   const [showVowelHarmony, setShowVowelHarmony] = useState(
-    !options.beginnerFriendly,
+    options.showVowelHarmony && !options.beginnerFriendly,
   );
+
+  useEffect(() => {
+    setShowVowelHarmony(options.showVowelHarmony && !options.beginnerFriendly);
+  }, [options.showVowelHarmony, options.beginnerFriendly]);
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -465,7 +495,8 @@ const SuffixBreakdownTab = ({
             ))}
           </div>
 
-          {token.morphology.vowelHarmony &&
+          {options.showVowelHarmony &&
+            token.morphology.vowelHarmony &&
             token.morphology.vowelHarmony.length > 0 && (
               <div className="mt-4">
                 <button
@@ -724,7 +755,7 @@ const ResultDisplay = ({
 
   const copyJSON = () => {
     navigator.clipboard.writeText(JSON.stringify(result, null, 2));
-    alert("JSON copied to clipboard!");
+    alert(t.copyJsonSuccess);
   };
 
   return (
@@ -760,7 +791,9 @@ const ResultDisplay = ({
         {activeTab === "overview" && (
           <OverviewTab result={result} t={t} options={options} />
         )}
-        {activeTab === "tokens" && <TokensTab result={result} t={t} />}
+        {activeTab === "tokens" && (
+          <TokensTab result={result} t={t} options={options} />
+        )}
         {activeTab === "suffix" && (
           <SuffixBreakdownTab result={result} t={t} options={options} />
         )}
@@ -867,9 +900,11 @@ const App = () => {
       setResult(data);
       saveToHistory(data);
     } catch (err: any) {
-      setError(
-        err.message || "An unexpected error occurred. Please try again.",
-      );
+      if (err?.message === "MISSING_API_KEY") {
+        setError(t.errors.missingApiKey);
+      } else {
+        setError(t.errors.generic);
+      }
     } finally {
       setIsLoading(false);
     }
