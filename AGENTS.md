@@ -2,15 +2,15 @@
 
 ## Project Structure & Module Organization
 
-This application is built with React 19 and loads through `index.tsx`. The main UI logic and components are centralized in `index.tsx` for modular simplicity within the project root. Shared domain models are defined in `types.ts`, and localized UI strings, suffix data, and phonetic rules are managed in `constants.ts`. All AI-driven morphological analysis logic is encapsulated in `services/geminiService.ts`. The entry point and styling configuration reside in `index.html`.
+This application is built with React 19 and loads through `src/main.tsx`. The main UI logic and components are centralized in `src/main.tsx` for modular simplicity within the `src` folder. Shared domain models are defined in `src/types.ts`, and localized UI strings, suffix data, and phonetic rules are managed in `src/constants.ts`. All AI-driven morphological analysis logic is encapsulated in `src/services/geminiService.ts`. The HTML entry point resides in `index.html`, with styling defined in `src/index.css` and Tailwind configuration in `tailwind.config.js`.
 
 ## Development Context
 
-This project uses ESM modules imported directly via `esm.sh` in the browser. There is no local build step required for development as it relies on standard web technologies and dynamic imports.
+This project is a Vite app using ESM. Run `npm run dev` for local development and `npm run build` for production builds.
 
 ## Formatting & Naming Conventions
 
-Use TypeScript with React functional components. Match the existing four-space indentation, single-quote imports, and PascalCase component names. Keep props and helper functions camelCased. Favor clear, declarative UI patterns using Tailwind CSS for all styling.
+Use TypeScript with React functional components. Match the existing two-space indentation, double-quote imports, and PascalCase component names. Keep props and helper functions camelCased. Favor clear, declarative UI patterns using Tailwind CSS for all styling.
 
 ### React Craftsmanship Principles
 

@@ -20,8 +20,15 @@ const analysisSchema: Schema = {
       properties: {
         meaningEnglish: { type: Type.STRING },
         meaningTurkish: { type: Type.STRING },
-        meaningTarget: { type: Type.STRING, description: "Didactic meaning (pedagogical paraphrase) in the requested language." },
-        register: { type: Type.STRING, enum: ["formal", "neutral", "informal", "unknown"] },
+        meaningTarget: {
+          type: Type.STRING,
+          description:
+            "Didactic meaning (pedagogical paraphrase) in the requested language.",
+        },
+        register: {
+          type: Type.STRING,
+          enum: ["formal", "neutral", "informal", "unknown"],
+        },
         sentenceNotes: { type: Type.ARRAY, items: { type: Type.STRING } },
       },
       required: [],
@@ -35,7 +42,21 @@ const analysisSchema: Schema = {
           lemma: { type: Type.STRING },
           pos: {
             type: Type.STRING,
-            enum: ["NOUN", "VERB", "ADJ", "ADV", "PRON", "DET", "ADP", "CONJ", "PART", "INTJ", "NUM", "PUNCT", "X"],
+            enum: [
+              "NOUN",
+              "VERB",
+              "ADJ",
+              "ADV",
+              "PRON",
+              "DET",
+              "ADP",
+              "CONJ",
+              "PART",
+              "INTJ",
+              "NUM",
+              "PUNCT",
+              "X",
+            ],
           },
           morphology: {
             type: Type.OBJECT,
@@ -60,8 +81,8 @@ const analysisSchema: Schema = {
                   properties: {
                     category: { type: Type.STRING },
                     affix: { type: Type.STRING },
-                    features: { 
-                      type: Type.OBJECT, 
+                    features: {
+                      type: Type.OBJECT,
                       properties: {
                         person: { type: Type.STRING },
                         number: { type: Type.STRING },
@@ -72,8 +93,8 @@ const analysisSchema: Schema = {
                         mood: { type: Type.STRING },
                         voice: { type: Type.STRING },
                         polarity: { type: Type.STRING },
-                        evidentiality: { type: Type.STRING }
-                      }
+                        evidentiality: { type: Type.STRING },
+                      },
                     },
                     explanation: { type: Type.STRING },
                   },
@@ -86,7 +107,16 @@ const analysisSchema: Schema = {
                 items: {
                   type: Type.OBJECT,
                   properties: {
-                    rule: { type: Type.STRING, enum: ["two-way", "four-way", "buffer-consonant", "consonant-softening", "other"] },
+                    rule: {
+                      type: Type.STRING,
+                      enum: [
+                        "two-way",
+                        "four-way",
+                        "buffer-consonant",
+                        "consonant-softening",
+                        "other",
+                      ],
+                    },
                     explanation: { type: Type.STRING },
                     appliesTo: { type: Type.STRING },
                   },
@@ -109,25 +139,28 @@ const analysisSchema: Schema = {
   required: ["input", "detected", "tokens"],
 };
 
-export async function analyzeText(text: string, options: AnalysisOptions): Promise<AnalysisResult> {
-  const modelId = "gemini-3-pro-preview"; 
+export async function analyzeText(
+  text: string,
+  options: AnalysisOptions,
+): Promise<AnalysisResult> {
+  const modelId = "gemini-3-pro-preview";
 
   const systemPrompt = `You are an expert Turkish linguistics assistant for language learners.
-  Analyze the provided Turkish text.
+    Analyze the provided Turkish text.
 
-  Key Instructions:
-  1. Didactic Meaning: Provide a pedagogical meaning (not just a translation) in 'overview.meaningTarget'. Explain the literal sense and grammatical intent.
-  2. Language: Output ALL text in ${options.outputLanguage}.
-  3. Feature Canonicalization: Use standard keys in features (tense, person, case, mood, etc.).
-  4. Suffixes/Clitics: Treat clitics like '-ki' or the question particle 'mi' as separate tokens or clearly identified bound morphemes.
-  5. Beginner Friendly: If 'beginnerFriendly' is true, keep explanations simple and prioritize common usage over obscure terminology.
-  6. Empty Arrays: If no derivations or inflections exist, return an empty array [].
+    Key Instructions:
+    1. Didactic Meaning: Provide a pedagogical meaning (not just a translation) in 'overview.meaningTarget'. Explain the literal sense and grammatical intent.
+    2. Language: Output ALL text in ${options.outputLanguage}.
+    3. Feature Canonicalization: Use standard keys in features (tense, person, case, mood, etc.).
+    4. Suffixes/Clitics: Treat clitics like '-ki' or the question particle 'mi' as separate tokens or clearly identified bound morphemes.
+    5. Beginner Friendly: If 'beginnerFriendly' is true, keep explanations simple and prioritize common usage over obscure terminology.
+    6. Empty Arrays: If no derivations or inflections exist, return an empty array [].
 
-  Analysis Configuration:
-  - Beginner Friendly: ${options.beginnerFriendly}
-  - Output Language: ${options.outputLanguage}
-  - Detail Level: ${options.detailLevel}
-  `;
+    Analysis Configuration:
+    - Beginner Friendly: ${options.beginnerFriendly}
+    - Output Language: ${options.outputLanguage}
+    - Detail Level: ${options.detailLevel}
+    `;
 
   const response = await ai.models.generateContent({
     model: modelId,

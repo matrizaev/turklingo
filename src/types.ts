@@ -2,8 +2,8 @@ export type AnalysisOptions = {
   beginnerFriendly: boolean;
   showVowelHarmony: boolean;
   showIPA: boolean;
-  outputLanguage: 'English' | 'Turkish' | 'Russian';
-  detailLevel: 'Brief' | 'Normal' | 'Deep';
+  outputLanguage: "English" | "Turkish" | "Russian";
+  detailLevel: "Brief" | "Normal" | "Deep";
 };
 
 export type AnalysisResult = {
@@ -23,8 +23,19 @@ export type AnalysisResult = {
     surface: string;
     lemma?: string;
     pos:
-      | "NOUN" | "VERB" | "ADJ" | "ADV" | "PRON" | "DET" | "ADP"
-      | "CONJ" | "PART" | "INTJ" | "NUM" | "PUNCT" | "X";
+      | "NOUN"
+      | "VERB"
+      | "ADJ"
+      | "ADV"
+      | "PRON"
+      | "DET"
+      | "ADP"
+      | "CONJ"
+      | "PART"
+      | "INTJ"
+      | "NUM"
+      | "PUNCT"
+      | "X";
     morphology: {
       root?: string;
       derivation?: Array<{
@@ -40,7 +51,12 @@ export type AnalysisResult = {
       }>;
       fullChain?: string;
       vowelHarmony?: Array<{
-        rule: "two-way" | "four-way" | "buffer-consonant" | "consonant-softening" | "other";
+        rule:
+          | "two-way"
+          | "four-way"
+          | "buffer-consonant"
+          | "consonant-softening"
+          | "other";
         explanation: string;
         appliesTo: string;
       }>;
