@@ -9,13 +9,11 @@ RUN npm ci
 
 COPY . .
 
-ARG API_KEY
-ENV API_KEY=$API_KEY
-
 RUN npm run build
 
-FROM nginx:1.29.4-alpine-slim AS runtime
+FROM nginx:1.29.4-alpine AS runtime
 
+COPY --chmod=755 docker-entrypoint.d/ /docker-entrypoint.d/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
