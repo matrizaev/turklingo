@@ -25,6 +25,7 @@ const resolvePattern = (
 ) => {
   if (!pattern) return "";
   const twoWay = ["a", "ı", "o", "u"].includes(lastVowel) ? "a" : "e";
+  const twoWayHigh = ["a", "ı", "o", "u"].includes(lastVowel) ? "ı" : "i";
   const fourWay = ["a", "ı"].includes(lastVowel)
     ? "ı"
     : ["e", "i"].includes(lastVowel)
@@ -35,6 +36,7 @@ const resolvePattern = (
   const useVoiceless = VOICELESS.includes(baseLast);
   return pattern
     .replaceAll("A", twoWay)
+    .replaceAll("H", twoWayHigh)
     .replaceAll("I", fourWay)
     .replaceAll("D", useVoiceless ? "t" : "d")
     .replaceAll("C", useVoiceless ? "ç" : "c");
@@ -58,9 +60,14 @@ export const buildConstructedWord = (
 
   let current = root;
   const chainParts = [root];
+  let hasNounPossessive = false;
 
   suffixes.forEach((suffix) => {
-    if (!suffix.pattern) return;
+    if (!suffix.pattern && !suffix.zero) return;
+    if (suffix.zero) {
+      chainParts.push("ø");
+      return;
+    }
 
     const lastVowel = getLastVowel(current);
     let baseLast = current.slice(-1);
@@ -76,6 +83,12 @@ export const buildConstructedWord = (
       droppedVowel = true;
     }
 
+    if (suffix.contract === "dropLastConsonant" && !endsWithVowel) {
+      current = current.slice(0, -1);
+      baseLast = current.slice(-1);
+      endsWithVowel = current.length > 0 && isVowel(baseLast);
+    }
+
     if (
       suffix.contract === "dropSuffixVowel" &&
       endsWithVowel &&
@@ -85,8 +98,23 @@ export const buildConstructedWord = (
       startsWithVowel = surface.length > 0 && isVowel(surface[0]);
     }
 
+    const needsPossessiveCaseLinking =
+      hasNounPossessive && suffix.pos === "NOUN" && suffix.category === "cases";
+
+    if (
+      needsPossessiveCaseLinking &&
+      endsWithVowel &&
+      surface.length > 0 &&
+      !isVowel(surface[0]) &&
+      surface[0] !== "n"
+    ) {
+      // Possessive + case: evi + -de -> evinde, arabası + -da -> arabasında
+      surface = `n${surface}`;
+      startsWithVowel = false;
+    }
+
     if (endsWithVowel && startsWithVowel) {
-      const buffer = suffix.buffer ?? "y";
+      const buffer = needsPossessiveCaseLinking ? "n" : (suffix.buffer ?? "y");
       surface = `${buffer}${surface}`;
     }
 
@@ -101,6 +129,10 @@ export const buildConstructedWord = (
 
     current = `${current}${surface}`;
     chainParts.push(surface);
+
+    if (suffix.pos === "NOUN" && suffix.category === "possessive") {
+      hasNounPossessive = true;
+    }
   });
 
   return {

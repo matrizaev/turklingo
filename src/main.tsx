@@ -831,6 +831,34 @@ const ConstructorTab = ({
   const rootGloss =
     uiLang === "ru" ? selectedRoot?.glossRu : selectedRoot?.glossEn;
 
+  useEffect(() => {
+    if (pos !== "VERB") return;
+
+    const prefersAoristIr =
+      selectedRoot?.id === "verb-gel" || selectedRoot?.id === "verb-gor";
+    const hasAr = suffixIds.includes("verb-aorist");
+    const hasIr = suffixIds.includes("verb-aorist-ir");
+
+    if (prefersAoristIr) {
+      if (hasAr || (hasAr && hasIr)) {
+        const next = suffixIds
+          .filter((id) => id !== "verb-aorist")
+          .map((id) => (id === "verb-aorist" ? "verb-aorist-ir" : id));
+        if (!next.includes("verb-aorist-ir")) next.push("verb-aorist-ir");
+        setSuffixIds(next);
+      }
+      return;
+    }
+
+    if (hasIr) {
+      const next = suffixIds
+        .filter((id) => id !== "verb-aorist-ir")
+        .map((id) => (id === "verb-aorist-ir" ? "verb-aorist" : id));
+      if (!next.includes("verb-aorist")) next.push("verb-aorist");
+      setSuffixIds(next);
+    }
+  }, [pos, selectedRoot?.id, setSuffixIds, suffixIds]);
+
   const suffixIndex = useMemo(() => {
     const indexMap: Record<string, number> = {};
     CONSTRUCTOR_SUFFIXES.forEach((suffix, index) => {
@@ -858,23 +886,6 @@ const ConstructorTab = ({
     return buildConstructedWord(selectedRoot?.root ?? "", orderedSuffixes);
   }, [selectedRoot?.root, orderedSuffixes]);
 
-  const categoryOrder: Record<ConstructorPos, string[]> = {
-    NOUN: ["plural", "possessive", "cases"],
-    VERB: ["tenses", "person"],
-    ADJ: ["derivation"],
-  };
-
-  const groupedSuffixes = categoryOrder[pos].map((category) => ({
-    category,
-    items: suffixes.filter((suffix) => suffix.category === category),
-  }));
-
-  const singleSelectCategories: Record<ConstructorPos, string[]> = {
-    NOUN: ["plural", "possessive", "cases"],
-    VERB: ["tenses", "person"],
-    ADJ: ["derivation"],
-  };
-
   const suffixById = useMemo(() => {
     const indexMap: Record<string, ConstructorSuffix> = {};
     CONSTRUCTOR_SUFFIXES.forEach((suffix) => {
@@ -882,6 +893,109 @@ const ConstructorTab = ({
     });
     return indexMap;
   }, []);
+
+  const categoryOrder: Record<ConstructorPos, string[]> = {
+    NOUN: ["plural", "possessive", "cases"],
+    VERB: ["polarity", "tenses", "mood", "person"],
+    ADJ: ["derivation"],
+  };
+
+  const groupedSuffixes = useMemo(() => {
+    const verbMain = {
+      polarity: suffixIds.find(
+        (id) =>
+          suffixById[id]?.pos === "VERB" &&
+          suffixById[id]?.category === "polarity",
+      ),
+      tense: suffixIds.find(
+        (id) =>
+          suffixById[id]?.pos === "VERB" &&
+          suffixById[id]?.category === "tenses",
+      ),
+      mood: suffixIds.find(
+        (id) =>
+          suffixById[id]?.pos === "VERB" && suffixById[id]?.category === "mood",
+      ),
+    };
+
+    const verbMainId =
+      verbMain.polarity ?? verbMain.tense ?? verbMain.mood ?? null;
+
+    const verbPersonLockedMainIds = new Set([
+      "verb-imperative-2sg",
+      "verb-imperative-2pl",
+      "verb-imperative-3sg",
+      "verb-imperative-neg-2sg",
+      "verb-imperative-neg-2pl",
+      "verb-imperative-neg-3sg",
+      "verb-optative-1sg",
+      "verb-optative-1pl",
+      "verb-optative-neg-1sg",
+      "verb-optative-neg-1pl",
+    ]);
+
+    const verbType2MainIds = new Set([
+      "verb-past",
+      "verb-past-neg",
+      "verb-conditional",
+      "verb-conditional-neg",
+    ]);
+
+    const verbHasMain = Boolean(verbMainId);
+    const verbPersonLocked =
+      verbMainId !== null && verbPersonLockedMainIds.has(verbMainId);
+    const verbPersonMode: "type1" | "type2" | "negAorist" | null = !verbHasMain
+      ? null
+      : verbPersonLocked
+        ? null
+        : verbMainId === "verb-aorist-neg" || verbMainId === "verb-ability-neg"
+          ? "negAorist"
+          : verbType2MainIds.has(verbMainId)
+            ? "type2"
+            : "type1";
+
+    const prefersAoristIr =
+      pos === "VERB" &&
+      (selectedRoot?.id === "verb-gel" || selectedRoot?.id === "verb-gor");
+
+    const isType2PersonId = (id: string) => id.includes("-type2");
+    const isNegAoristPersonId = (id: string) => id.includes("-negAorist");
+
+    return categoryOrder[pos].map((category) => {
+      let items = suffixes.filter((suffix) => suffix.category === category);
+
+      if (pos === "VERB" && category === "tenses") {
+        items = items.filter((suffix) => {
+          if (suffix.id === "verb-aorist-ir") return prefersAoristIr;
+          if (suffix.id === "verb-aorist") return !prefersAoristIr;
+          return true;
+        });
+      }
+
+      if (pos === "VERB" && category === "person") {
+        if (!verbHasMain || verbPersonMode === null) {
+          items = [];
+        } else if (verbPersonMode === "type2") {
+          items = items.filter((suffix) => isType2PersonId(suffix.id));
+        } else if (verbPersonMode === "negAorist") {
+          items = items.filter((suffix) => isNegAoristPersonId(suffix.id));
+        } else {
+          items = items.filter(
+            (suffix) =>
+              !isType2PersonId(suffix.id) && !isNegAoristPersonId(suffix.id),
+          );
+        }
+      }
+
+      return { category, items };
+    });
+  }, [pos, selectedRoot?.id, suffixById, suffixIds, suffixes]);
+
+  const singleSelectCategories: Record<ConstructorPos, string[]> = {
+    NOUN: ["plural", "possessive", "cases"],
+    VERB: ["polarity", "tenses", "mood", "person"],
+    ADJ: ["derivation"],
+  };
 
   const toggleSuffix = (suffixId: string) => {
     if (suffixIds.includes(suffixId)) {
@@ -897,6 +1011,146 @@ const ConstructorTab = ({
         const existing = suffixById[id];
         return existing?.category !== nextSuffix.category;
       });
+    }
+    if (pos === "NOUN") {
+      if (nextSuffix.id === "noun-plural") {
+        // 3pl possessive already contains -lAr-, so noun plural + 3pl poss would double it.
+        if (nextIds.includes("noun-poss-3pl")) return;
+      }
+      if (nextSuffix.id === "noun-poss-3pl") {
+        nextIds = nextIds.filter((id) => suffixById[id]?.category !== "plural");
+      }
+    }
+    if (pos === "VERB") {
+      const getVerbMainId = (ids: string[]) => {
+        const polarityId = ids.find(
+          (id) =>
+            suffixById[id]?.pos === "VERB" &&
+            suffixById[id]?.category === "polarity",
+        );
+        const tenseId = ids.find(
+          (id) =>
+            suffixById[id]?.pos === "VERB" &&
+            suffixById[id]?.category === "tenses",
+        );
+        const moodId = ids.find(
+          (id) =>
+            suffixById[id]?.pos === "VERB" &&
+            suffixById[id]?.category === "mood",
+        );
+        return polarityId ?? tenseId ?? moodId ?? null;
+      };
+
+      const verbPersonLockedMainIds = new Set([
+        "verb-imperative-2sg",
+        "verb-imperative-2pl",
+        "verb-imperative-3sg",
+        "verb-imperative-neg-2sg",
+        "verb-imperative-neg-2pl",
+        "verb-imperative-neg-3sg",
+        "verb-optative-1sg",
+        "verb-optative-1pl",
+        "verb-optative-neg-1sg",
+        "verb-optative-neg-1pl",
+      ]);
+
+      const verbType2MainIds = new Set([
+        "verb-past",
+        "verb-past-neg",
+        "verb-conditional",
+        "verb-conditional-neg",
+      ]);
+
+      const isType2PersonId = (id: string) => id.includes("-type2");
+      const isNegAoristPersonId = (id: string) => id.includes("-negAorist");
+      const isPersonIdForMode = (
+        id: string,
+        mode: "type1" | "type2" | "negAorist",
+      ) => {
+        if (mode === "type2") return isType2PersonId(id);
+        if (mode === "negAorist") return isNegAoristPersonId(id);
+        return !isType2PersonId(id) && !isNegAoristPersonId(id);
+      };
+
+      const currentMainId = getVerbMainId(suffixIds);
+      const currentLocked =
+        currentMainId !== null && verbPersonLockedMainIds.has(currentMainId);
+      const currentPersonMode: "type1" | "type2" | "negAorist" | null =
+        currentMainId === null || currentLocked
+          ? null
+          : currentMainId === "verb-aorist-neg" ||
+              currentMainId === "verb-ability-neg"
+            ? "negAorist"
+            : verbType2MainIds.has(currentMainId)
+              ? "type2"
+              : "type1";
+
+      // Main selections are exclusive: polarity OR tense OR mood.
+      if (nextSuffix.category === "polarity") {
+        nextIds = nextIds.filter((id) => {
+          const existing = suffixById[id];
+          return (
+            existing?.category !== "tenses" && existing?.category !== "mood"
+          );
+        });
+      }
+      if (nextSuffix.category === "tenses") {
+        nextIds = nextIds.filter((id) => {
+          const existing = suffixById[id];
+          return (
+            existing?.category !== "polarity" && existing?.category !== "mood"
+          );
+        });
+      }
+      if (nextSuffix.category === "mood") {
+        nextIds = nextIds.filter((id) => {
+          const existing = suffixById[id];
+          return (
+            existing?.category !== "polarity" && existing?.category !== "tenses"
+          );
+        });
+      }
+
+      if (nextSuffix.category === "person") {
+        const nextMainId = getVerbMainId(nextIds);
+        if (!nextMainId) return;
+        if (verbPersonLockedMainIds.has(nextMainId)) return;
+
+        const nextPersonMode: "type1" | "type2" | "negAorist" =
+          nextMainId === "verb-aorist-neg" || nextMainId === "verb-ability-neg"
+            ? "negAorist"
+            : verbType2MainIds.has(nextMainId)
+              ? "type2"
+              : "type1";
+
+        if (!isPersonIdForMode(nextSuffix.id, nextPersonMode)) return;
+      } else {
+        const nextMainId = getVerbMainId([...nextIds, suffixId]);
+        const nextLocked =
+          nextMainId !== null && verbPersonLockedMainIds.has(nextMainId);
+        const nextPersonMode: "type1" | "type2" | "negAorist" | null =
+          nextMainId === null || nextLocked
+            ? null
+            : nextMainId === "verb-aorist-neg" ||
+                nextMainId === "verb-ability-neg"
+              ? "negAorist"
+              : verbType2MainIds.has(nextMainId)
+                ? "type2"
+                : "type1";
+
+        if (nextPersonMode === null || nextPersonMode !== currentPersonMode) {
+          nextIds = nextIds.filter(
+            (id) => suffixById[id]?.category !== "person",
+          );
+        } else {
+          // Defensive: drop any person choice that doesn't match the active mode.
+          nextIds = nextIds.filter((id) => {
+            const existing = suffixById[id];
+            if (existing?.category !== "person") return true;
+            return isPersonIdForMode(existing.id, nextPersonMode);
+          });
+        }
+      }
     }
     setSuffixIds([...nextIds, suffixId]);
   };

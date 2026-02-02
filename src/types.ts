@@ -25,7 +25,8 @@ export type ConstructorSuffix = {
   pos: ConstructorPos;
   order: number;
   buffer?: "y" | "n" | "s";
-  contract?: "dropLastVowel" | "dropSuffixVowel";
+  contract?: "dropLastVowel" | "dropLastConsonant" | "dropSuffixVowel";
+  zero?: boolean;
 };
 
 export type ConstructorState = {
