@@ -203,8 +203,8 @@ export const UI_STRINGS = {
       missingApiKey: "Missing API key. Set API_KEY and reload.",
       generic: "An unexpected error occurred. Please try again.",
     },
-    footer: "© {year} TurkLingo Analyzer. Built with React, Tailwind & Gemini.",
-    aboutMessage: "TurkLingo v1.0\nPowered by Google Gemini",
+    footer: "© {year} TurkLingo Analyzer. Built with React, Tailwind & AI.",
+    aboutMessage: "TurkLingo v1.0\nPowered by AI backend",
   },
   ru: {
     appTitle: "TurkLingo",
@@ -375,8 +375,8 @@ export const UI_STRINGS = {
       missingApiKey: "Отсутствует API ключ. Укажите API_KEY и перезагрузите.",
       generic: "Произошла ошибка. Пожалуйста, попробуйте еще раз.",
     },
-    footer: "© {year} TurkLingo Analyzer. Создано на React, Tailwind и Gemini.",
-    aboutMessage: "TurkLingo v1.0\nРаботает на Google Gemini",
+    footer: "© {year} TurkLingo Analyzer. Создано на React, Tailwind и AI.",
+    aboutMessage: "TurkLingo v1.0\nРаботает на AI-бэкенде",
   },
 };
 

@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       "process.env.API_KEY": JSON.stringify(env.API_KEY),
+      "process.env.AI_BACKEND": JSON.stringify(env.AI_BACKEND),
     },
     resolve: {
       alias: {

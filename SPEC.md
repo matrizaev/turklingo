@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-**TurkLingo** is a client-side, pedagogical Turkish morphology analyzer. It uses the **Google Gemini 3 Pro** model to produce a structured JSON analysis that the UI renders into learner-friendly explanations.
+**TurkLingo** is a client-side, pedagogical Turkish morphology analyzer. It uses a selectable AI backend (Gemini or OpenAI) to produce a structured JSON analysis that the UI renders into learner-friendly explanations.
 
 - **UI localization**: English and Russian (primary interface strings + reference tables).
 - **Analysis output language** (sent to the model): English, Turkish, or Russian.
@@ -31,7 +31,7 @@
 
 - **Frontend**: React 19 + TypeScript, bundled with Vite.
 - **Styling**: Tailwind CSS (configured in `tailwind.config.js`) + base styles in `src/index.css`.
-- **AI Engine**: `@google/genai` (model: `gemini-3-pro-preview`).
+- **AI Engine**: `@google/genai` (model: `gemini-3-pro-preview`) or `openai` (model: `gpt-5.2`).
 
 ## 4. Architecture & Module Layout
 
@@ -39,11 +39,12 @@
 - UI + state: `src/main.tsx` (single-file app).
 - Domain types: `src/types.ts`.
 - Localization + linguistic reference data: `src/constants.ts`.
-- AI integration: `src/services/geminiService.ts`.
+- AI integration: `src/services/geminiService.ts`, `src/services/openaiService.ts`, dispatcher in `src/services/aiService.ts`.
 
 ## 5. AI Integration Contract
 
 - **Authentication**: API key is read as `process.env.API_KEY` (injected by Vite `define` from env files).
+- **Backend selection**: `process.env.AI_BACKEND` controls which provider is used (`gemini` or `openai`).
 - **Request shape**:
   - `systemInstruction` enforces didactic meaning, output language, beginner-friendly behavior, detail level, clitic handling guidance, and returning empty arrays when a section is absent.
   - Response is requested as `application/json` and validated against a JSON schema (`responseSchema`).
@@ -68,7 +69,7 @@
 - The Options UI includes toggles for `showVowelHarmony` and `showIPA`, but they are not currently wired to rendering or to the model prompt.
 - The analysis schema includes `rulesAndNotes` and `overview.meaningTurkish`, but these fields are not currently rendered in the UI.
 - Not all user-facing strings are localized (e.g. some labels/alerts and service error messages are English-only).
-- Gemini requests happen in the browser; embedding an API key is appropriate only for trusted environments. Public deployments should use a backend proxy.
+- Requests happen in the browser; embedding an API key is appropriate only for trusted environments. Public deployments should use a backend proxy.
 
 ## 9. Non-Goals
 

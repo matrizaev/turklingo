@@ -17,7 +17,7 @@ import {
   ConstructorSuffix,
   HistoryItem,
 } from "./types";
-import { analyzeText } from "./services/geminiService";
+import { analyzeText } from "./services/aiService";
 import { buildConstructedWord } from "./services/wordConstructor";
 import "./index.css";
 

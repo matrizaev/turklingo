@@ -6,6 +6,8 @@ export type AnalysisOptions = {
   detailLevel: "Brief" | "Normal" | "Deep";
 };
 
+export type AiBackend = "gemini" | "openai";
+
 export type ConstructorPos = "NOUN" | "VERB" | "ADJ";
 
 export type ConstructorRoot = {
